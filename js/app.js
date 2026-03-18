@@ -522,7 +522,7 @@ function renderCalendar() {
   for (let i = firstDay-1; i >= 0; i--) html += `<div class="cal-day other-month">${daysInPrev-i}</div>`;
   for (let d = 1; d <= daysInMonth; d++) {
     const isToday = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
-    html += `<div class="cal-day${isToday?' today':''}${eventDays.has(d)?' has-event':''}" onclick="calDayClick(${year},${month+1},${d})">${d}</div>`;
+    html += `<div class="cal-day${isToday?' today':''}${eventDays.has(d)?' has-event':''}${myCalDays.has(d)?' my-event':''}" onclick="calDayClick(${year},${month+1},${d})">${d}</div>`;
   }
   const cells = firstDay + daysInMonth;
   const rem = cells % 7 === 0 ? 0 : 7 - (cells % 7);
