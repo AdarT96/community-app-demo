@@ -657,6 +657,7 @@ ul { list-style: none; }
 .contact-name { font: var(--type-title); color: var(--md-on-surface); font-size: 0.9rem; }
 .contact-role { font: var(--type-body); color: var(--md-on-surface-variant); font-size: 0.78rem; margin-top: 2px; }
 .contact-phone { font: var(--type-body); color: var(--md-primary); font-size: 0.78rem; margin-top: 2px; font-weight: 500; }
+.contact-rank { font: var(--type-body); color: #6750A4; font-size: 0.75rem; margin-top: 2px; font-weight: 600; }
 .contact-group-badge {
   display: inline-block;
   padding: 2px 8px;
@@ -842,6 +843,9 @@ ul { list-style: none; }
   bottom: 2px;
 }
 .cal-day.today.has-event::after { background: #fff; }
+.cal-day.my-event::after { background: #E53935 !important; }
+.cal-day.today.my-event::after { background: #fff !important; }
+.cal-day.my-event { font-weight: 600; }
 
 /* ═══════════════════════════════════════════════════════════
    DOCUMENTS

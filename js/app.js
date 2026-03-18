@@ -11,6 +11,7 @@ const APP = {
   networkSearch: '',
   biometricRegistered: false,
   expandedNetworkId: null,
+  myCalendarEvents: new Set(),
 };
 
 // ── ניתוב מסכים ───────────────────────────────────────────────
@@ -249,12 +250,14 @@ function renderContacts() {
     return;
   }
 
+  const isAdmin = MOCK_DATA.currentUser?.role === 'admin';
   container.innerHTML = members.map(u => `
     <div class="contact-card">
       <div class="contact-avatar" style="background:${MOCK_DATA.groupColor(u.group)}">${u.avatar}</div>
       <div class="contact-info">
         <div class="contact-name">${u.name}</div>
         <div class="contact-role">${u.profession}</div>
+        ${isAdmin && u.rank ? `<div class="contact-rank">🎖️ ${u.rank}</div>` : ''}
         <div class="contact-phone">📱 ${u.phone || 'לא צוין'}</div>
         <span class="contact-group-badge" style="background:${MOCK_DATA.groupColor(u.group)}22;color:${MOCK_DATA.groupColor(u.group)}">${MOCK_DATA.groupLabel(u.group)}</span>
       </div>
@@ -310,6 +313,7 @@ function renderNetworking() {
         <div style="flex:1;min-width:0">
           <div class="network-name">${u.name}</div>
           <div class="network-profession">💼 ${u.profession}</div>
+          ${MOCK_DATA.currentUser?.role === 'admin' && u.rank ? `<div class="contact-rank" style="margin-top:2px">🎖️ ${u.rank}</div>` : ''}
           <span class="contact-group-badge" style="background:${color}22;color:${color}">${MOCK_DATA.groupLabel(u.group)}</span>
         </div>
         <div class="network-expand-btn ${isExpanded ? 'open' : ''}">›</div>
@@ -465,9 +469,29 @@ function showEventDetail(id) {
         <div style="font-size:.875rem;line-height:1.7">${ev.description}</div>
       </div>
     </div>
-    <button class="btn btn-filled mt-16" onclick="closeModal('event-modal')">סגור</button>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn btn-filled" onclick="closeModal('event-modal')" style="flex:1">סגור</button>
+      <button class="btn ${APP.myCalendarEvents.has(ev.id) ? 'btn-outlined' : 'btn-tonal'}" 
+        onclick="toggleMyCalendarEvent(${ev.id})" 
+        style="flex:1.4;border-color:${APP.myCalendarEvents.has(ev.id) ? '#E53935' : 'transparent'};color:${APP.myCalendarEvents.has(ev.id) ? '#E53935' : 'inherit'}">
+        ${APP.myCalendarEvents.has(ev.id) ? '🗑️ הסר מיומן' : '📌 הוסף ליומן שלי'}
+      </button>
+    </div>
   `;
   document.getElementById('event-modal').classList.add('open');
+}
+
+function toggleMyCalendarEvent(id) {
+  if (APP.myCalendarEvents.has(id)) {
+    APP.myCalendarEvents.delete(id);
+    showToast('🗑️ הוסר מהיומן האישי');
+  } else {
+    APP.myCalendarEvents.add(id);
+    showToast('📌 נוסף ליומן האישי!');
+  }
+  closeModal('event-modal');
+  if (APP.scheduleView === 'calendar') renderCalendar();
+  else renderScheduleContent();
 }
 
 // לוח חודשי
@@ -479,11 +503,17 @@ function renderCalendar() {
   const daysInMonth = new Date(year, month+1, 0).getDate();
   const daysInPrev  = new Date(year, month, 0).getDate();
   const today = new Date();
+  const monthPrefix = `${year}-${String(month+1).padStart(2,'0')}`;
   const eventDays = new Set(
     MOCK_DATA.getFilteredEvents(APP.currentGroup)
       .map(e => e.date)
-      .filter(d => d.startsWith(`${year}-${String(month+1).padStart(2,'0')}`))
+      .filter(d => d.startsWith(monthPrefix))
       .map(d => parseInt(d.split('-')[2]))
+  );
+  const myCalDays = new Set(
+    MOCK_DATA.events
+      .filter(e => APP.myCalendarEvents.has(e.id) && e.date.startsWith(monthPrefix))
+      .map(e => parseInt(e.date.split('-')[2]))
   );
   const grid = document.getElementById('cal-grid');
   if (!grid) return;
@@ -628,7 +658,7 @@ function renderAdminMemberList() {
       <div class="contact-avatar" style="background:${MOCK_DATA.groupColor(u.group)};width:36px;height:36px;font-size:.75rem">${u.avatar}</div>
       <div style="flex:1">
         <div style="font-size:.85rem;font-weight:500">${u.name}</div>
-        <div style="font-size:.72rem;color:var(--md-on-surface-variant)">${MOCK_DATA.groupLabel(u.group)} · ${u.role === 'admin' ? 'מנהל' : 'חבר'}</div>
+        <div style="font-size:.72rem;color:var(--md-on-surface-variant)">${MOCK_DATA.groupLabel(u.group)} · ${u.role === 'admin' ? 'מנהל' : 'חבר'}${u.rank ? ` · 🎖️ ${u.rank}` : ''}</div>
       </div>
       <span class="status-badge status-${u.status}">${MOCK_DATA.statusLabel(u.status)}</span>
     </div>`).join('');
