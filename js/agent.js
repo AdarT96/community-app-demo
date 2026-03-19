@@ -154,6 +154,41 @@ const AGENT = {
     };
   },
 
+  _countProfessionAnswer(q) {
+    const isCountQuery = q.includes('כמה') || q.includes('מספר') || q.includes('כמות');
+    if (!isCountQuery) return null;
+
+    const professionMap = [
+      { label: 'מהנדסים', terms: ['מהנדס', 'מהנדסים', 'הנדסה'] },
+      { label: 'פסיכולוגים', terms: ['פסיכולוג', 'פסיכולוגית', 'פסיכולוגים', 'פסיכולוגיות'] },
+      { label: 'מאמנים', terms: ['מאמן', 'מאמנת', 'מאמנים', 'מאמנות'] },
+      { label: 'פרמדיקים', terms: ['פרמדיק', 'פרמדיקים'] },
+      { label: 'מדריכים', terms: ['מדריך', 'מדריכה', 'מדריכים', 'מדריכות'] },
+      { label: 'מנהלי פרויקטים', terms: ['מנהל פרויקטים', 'מנהלת פרויקטים', 'פרויקטים'] },
+      { label: 'מעצבים', terms: ['מעצב', 'מעצבת', 'מעצבים', 'מעצבות', 'ux', 'ui'] },
+    ];
+
+    const matched = professionMap.find(p => p.terms.some(t => q.includes(t)));
+    if (!matched) return null;
+
+    let group = this._matchGroupFromQuery(q);
+    if (!group && (q.includes('בקבוצה') || q.includes('בקבוצה שלי'))) {
+      const currentGroup = MOCK_DATA.currentUser?.group;
+      if (currentGroup && currentGroup !== 'All') group = currentGroup;
+    }
+
+    const members = MOCK_DATA.getApprovedMembers(group || 'All');
+    const count = members.filter(u =>
+      matched.terms.some(t => String(u.profession || '').toLowerCase().includes(t))
+    ).length;
+
+    const groupText = group ? ` בקבוצת ${MOCK_DATA.groupLabel(group)}` : '';
+    return {
+      text: `יש ${count} ${matched.label} מאושרים${groupText}.`,
+      cards: []
+    };
+  },
+
   _looksLikePersonQuery(q, keywords) {
     const personIndicators = ['פרטים', 'מידע', 'מי', 'טלפון', 'וואטסאפ', 'חבר', 'איש', 'על'];
     if (personIndicators.some(t => q.includes(t))) return true;
@@ -263,6 +298,9 @@ const AGENT = {
     const countAnswer = this._countMembersAnswer(q);
     if (countAnswer) return countAnswer;
 
+    const professionCountAnswer = this._countProfessionAnswer(q);
+    if (professionCountAnswer) return professionCountAnswer;
+
     // ── חודש ───────────────────────────────────────────────
     const monthMatch = this._matchMonth(q);
     if (monthMatch !== null) return this._getEventsByMonth(monthMatch, isAdmin);
@@ -292,7 +330,16 @@ const AGENT = {
     }
 
     // ── סטטיסטיקות (מנהל) ─────────────────────────────────
-    if (isAdmin && (q.includes('סטטיסטיקה') || q.includes('כמה חברים') || q.includes('כמה אירועים') || q.includes('ממתינים') || q.includes('כמה') || q.includes('סה"כ'))) {
+    if (isAdmin && (
+      q.includes('סטטיסטיקה') ||
+      q.includes('סטטיסטיקות') ||
+      q.includes('דוח') ||
+      q.includes('פילוח') ||
+      q.includes('כמה חברים במערך') ||
+      q.includes('כמה אירועים') ||
+      q.includes('ממתינים') ||
+      q.includes('סה"כ במערך')
+    )) {
       return this._getStats();
     }
 
