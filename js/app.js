@@ -147,6 +147,9 @@ function handleLogout() {
 function loadHomeScreen() {
   const u = MOCK_DATA.currentUser;
   if (!u) return;
+  // הצג כפתור סוכן חכם
+  const fab = document.getElementById('agent-fab');
+  if (fab) fab.classList.remove('hidden');
   const el = document.getElementById('home-user-name');
   if (el) el.textContent = u.name.split(' ')[0];
   const av = document.getElementById('home-avatar');

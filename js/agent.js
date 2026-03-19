@@ -313,7 +313,7 @@ const AGENT = {
       skills: u.skills,
       bio: u.bio,
       rank: isAdmin ? u.rank : null,
-      birthday: u.birthday ? MOCK_DATA.formatDateShort(u.birthday) : null
+      birthday: u.birthday ? MOCK_DATA.formatDate(u.birthday) : null
     };
   }
 };
