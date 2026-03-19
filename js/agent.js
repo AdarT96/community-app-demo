@@ -171,6 +171,74 @@ const AGENT = {
     };
   },
 
+  _isAllGroupsQuery(q) {
+    return (
+      q.includes('בכל הקבוצות') ||
+      q.includes('בכל קבוצה') ||
+      q.includes('כל הקבוצות') ||
+      q.includes('קובוצ') // טיפול בטייפו נפוץ: "קובוצות"
+    );
+  },
+
+  _isMyGroupQuery(q) {
+    return q.includes('בקבוצה שלי') || q.includes('אצלי בקבוצה');
+  },
+
+  _statusWord(count) {
+    return count === 1 ? 'מאושר' : 'מאושרים';
+  },
+
+  _handleCountScopeFollowUp(q) {
+    const ctx = this._getContext();
+    if (!ctx) return null;
+
+    const asksScope = this._isAllGroupsQuery(q) || this._isMyGroupQuery(q) || !!this._matchGroupFromQuery(q);
+    if (!asksScope) return null;
+
+    let targetGroup = null;
+    if (this._isAllGroupsQuery(q)) {
+      targetGroup = 'All';
+    } else if (this._isMyGroupQuery(q)) {
+      targetGroup = MOCK_DATA.currentUser?.group || 'All';
+    } else {
+      targetGroup = this._matchGroupFromQuery(q) || 'All';
+    }
+
+    if (ctx.type === 'memberCount') {
+      const members = MOCK_DATA.getApprovedMembers(targetGroup === 'All' ? 'All' : targetGroup);
+      const memberWord = members.length === 1 ? 'חבר' : 'חברים';
+      const text = targetGroup === 'All'
+        ? `בכל הקבוצות יש ${members.length} ${memberWord} ${this._statusWord(members.length)}.`
+        : `בקבוצת ${MOCK_DATA.groupLabel(targetGroup)} יש ${members.length} ${memberWord} ${this._statusWord(members.length)}.`;
+      this._setContext({ type: 'memberCount', members, group: targetGroup });
+      return { text, cards: [] };
+    }
+
+    if (ctx.type === 'professionCount' && Array.isArray(ctx.professionTerms)) {
+      const members = MOCK_DATA.getApprovedMembers(targetGroup === 'All' ? 'All' : targetGroup);
+      const matchedMembers = members.filter(u =>
+        ctx.professionTerms.some(t => String(u.profession || '').toLowerCase().includes(t))
+      );
+      const count = matchedMembers.length;
+      const professionWord = count === 1 ? ctx.professionSingular : ctx.professionPlural;
+      const text = targetGroup === 'All'
+        ? `בכל הקבוצות יש ${count} ${professionWord} ${this._statusWord(count)}.`
+        : `בקבוצת ${MOCK_DATA.groupLabel(targetGroup)} יש ${count} ${professionWord} ${this._statusWord(count)}.`;
+      this._setContext({
+        type: 'professionCount',
+        members: matchedMembers,
+        group: targetGroup,
+        profession: professionWord,
+        professionTerms: ctx.professionTerms,
+        professionSingular: ctx.professionSingular,
+        professionPlural: ctx.professionPlural,
+      });
+      return { text, cards: [] };
+    }
+
+    return null;
+  },
+
   _matchGroupFromQuery(q) {
     const groupMap = [
       { value: 'Operative', terms: ['אופרטיבי', 'אופרטיביים'] },
@@ -195,11 +263,12 @@ const AGENT = {
     const members = MOCK_DATA.getApprovedMembers(group || 'All');
     const groupLabel = group ? MOCK_DATA.groupLabel(group) : 'במערך';
     const memberWord = members.length === 1 ? 'חבר' : 'חברים';
+    const statusWord = this._statusWord(members.length);
 
     return {
       text: group
-        ? `יש ${members.length} ${memberWord} מאושרים בקבוצת ${groupLabel}.`
-        : `יש ${members.length} ${memberWord} מאושרים ${groupLabel}.`,
+        ? `יש ${members.length} ${memberWord} ${statusWord} בקבוצת ${groupLabel}.`
+        : `יש ${members.length} ${memberWord} ${statusWord} ${groupLabel}.`,
       cards: [],
       context: { type: 'memberCount', members, group }
     };
@@ -238,10 +307,19 @@ const AGENT = {
 
     const groupText = group ? ` בקבוצת ${MOCK_DATA.groupLabel(group)}` : '';
     const professionWord = count === 1 ? matched.singular : matched.plural;
+    const statusWord = this._statusWord(count);
     return {
-      text: `יש ${count} ${professionWord} מאושרים${groupText}.`,
+      text: `יש ${count} ${professionWord} ${statusWord}${groupText}.`,
       cards: [],
-      context: { type: 'professionCount', members: matchedMembers, group, profession: professionWord }
+      context: {
+        type: 'professionCount',
+        members: matchedMembers,
+        group,
+        profession: professionWord,
+        professionTerms: matched.terms,
+        professionSingular: matched.singular,
+        professionPlural: matched.plural,
+      }
     };
   },
 
@@ -347,6 +425,9 @@ const AGENT = {
 
     const q = query.trim().toLowerCase();
     const isAdmin = user.role === 'admin';
+
+    const followUpScope = this._handleCountScopeFollowUp(q);
+    if (followUpScope) return followUpScope;
 
     const followUpPeople = this._handleFollowUpPeopleQuery(q, isAdmin);
     if (followUpPeople) return followUpPeople;
