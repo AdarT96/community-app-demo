@@ -709,7 +709,6 @@ const AGENT = {
   _smallTalkResponse() {
     return {
       text: 'אני מעולה, תודה ששאלת 😊 איך אפשר לעזור?',
-      suggestions: ['מתי הגיבוש הקרוב?', 'מה האירועים במרץ?', 'פרטים על דוד לוי'],
       cards: []
     };
   },
@@ -1017,18 +1016,10 @@ const AGENT = {
   },
 
   _defaultResponse(isAdmin) {
-    const s = [
-      'מתי הגיבוש הקרוב?',
-      'גיבוש בחודש מאי?',
-      'מה האירועים במרץ?',
-      'יש פסיכולוג?',
-      'מי יכול לעזור בנושא משפטי?',
-      'טופס הרשמה לגיבוש',
-      'מי בדרגת סרן?',
-      'פרטים על דוד לוי',
-    ];
-    if (isAdmin) s.push('כמה חברים יש במערך?');
-    return { text: 'לא הצלחתי להבין את השאלה. נסה לשאול:', suggestions: s, cards: [] };
+    return {
+      text: 'לא הצלחתי להבין את השאלה. אפשר לשאול על אירועים, חברים, נסיעות, מסמכים ועוד.',
+      cards: []
+    };
   },
 
   _eventCard(ev) {
@@ -1060,21 +1051,6 @@ function closeAgentChat() {
 
 function renderAgentWelcome() {
   const user = MOCK_DATA.currentUser;
-  const isAdmin = user?.role === 'admin';
-  const disabledUntil = window.__geminiTemporarilyDisabledUntil || 0;
-  const hasGemini = isGeminiEnabled() && Date.now() > disabledUntil;
-
-  const suggestions = [
-    '🏕️ מתי הגיבוש הקרוב?',
-    '📅 אירועים בחודש מרץ',
-    '🧑‍⚕️ יש פסיכולוג?',
-    '⚖️ מי יכול לעזור בנושא משפטי?',
-    '🪖 מי בדרגת סרן?',
-    '📂 טופס הרשמה לגיבוש',
-    '👤 פרטים על דוד לוי',
-    '🎂 מי יום הולדת השבוע?',
-  ];
-  if (isAdmin) suggestions.push('📊 כמה חברים יש?');
 
   const container = document.getElementById('agent-messages');
   if (!container) return;
@@ -1086,12 +1062,9 @@ function renderAgentWelcome() {
       <div class="agent-avatar">🤖</div>
       <div class="agent-bubble">
         שלום ${firstName}! אני הסוכן החכם של המערך 👋<br/>
-        שאל אותי על <strong>אירועים</strong>, <strong>חברים</strong>, <strong>מסמכים</strong> ועוד.<br/>
-        <strong>מה תרצה לדעת?</strong>
+        שאל אותי על <strong>אירועים</strong>, <strong>חברים</strong>, <strong>נסיעות</strong>, <strong>מסמכים</strong> ועוד.<br/>
+        לדוגמה: <em>מי נוסע מתל אביב לגיבוש?</em>
       </div>
-    </div>
-    <div class="agent-suggestions">
-      ${suggestions.map(s => `<button class="agent-chip" onclick="sendAgentSuggestion('${s}')">${s}</button>`).join('')}
     </div>
   `;
 }
