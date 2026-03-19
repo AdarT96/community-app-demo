@@ -313,6 +313,42 @@
     <!-- טוסט -->
     <div id="toast" class="toast"></div>
 
+    <!-- כפתור צף – סוכן חכם -->
+    <button id="agent-fab" class="agent-fab hidden" onclick="openAgentChat()" title="סוכן חכם 🤖">🤖</button>
+
+    <!-- מודל: סוכן חכם -->
+    <div id="agent-modal" onclick="closeAgentChat()">
+      <div class="agent-sheet" onclick="event.stopPropagation()">
+        <!-- כותרת -->
+        <div class="agent-header">
+          <div class="agent-header-avatar">🤖</div>
+          <div class="agent-header-info">
+            <div class="agent-header-title">סוכן חכם</div>
+            <div class="agent-header-sub">שאל אותי על אירועים, חברים, מסמכים…</div>
+          </div>
+          <div class="agent-header-btns">
+            <button class="agent-header-btn" onclick="clearAgentChat()" title="נקה שיחה">🗑️</button>
+            <button class="agent-header-btn" onclick="closeAgentChat()" title="סגור">✕</button>
+          </div>
+        </div>
+
+        <!-- הודעות -->
+        <div id="agent-messages"></div>
+
+        <!-- שורת קלט -->
+        <div class="agent-input-row">
+          <input
+            type="text"
+            id="agent-input"
+            class="agent-input"
+            placeholder="שאל אותי משהו…"
+            onkeydown="handleAgentKeydown(event)"
+          />
+          <button class="agent-send-btn" onclick="sendAgentMessage()" title="שלח">➤</button>
+        </div>
+      </div>
+    </div>
+
     <!-- מודל: פרטי אירוע -->
     <div id="event-modal" class="modal-overlay" onclick="closeModal('event-modal')">
       <div class="modal-sheet" id="event-modal-content" onclick="event.stopPropagation()"></div>
@@ -403,6 +439,7 @@
 
 <script src="js/data.js?v=2"></script>
 <script src="js/app.js?v=2"></script>
+<script src="js/agent.js?v=1"></script>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const dp = document.getElementById('ev-date');

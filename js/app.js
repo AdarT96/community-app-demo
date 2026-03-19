@@ -39,6 +39,10 @@ function updateBottomNav(screenId) {
   // הצג/הסתר פילטר גלובלי
   const gf = document.getElementById('global-group-filter');
   if (gf) gf.style.display = noNav.includes(screenId) ? 'none' : 'flex';
+
+  // הצג/הסתר כפתור סוכן צף
+  const fab = document.getElementById('agent-fab');
+  if (fab) fab.classList.toggle('hidden', noNav.includes(screenId));
 }
 
 // ── פילטר קבוצה גלובלי ─────────────────────────────────────
