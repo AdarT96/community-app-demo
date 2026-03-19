@@ -350,19 +350,22 @@ const AGENT = {
 
 function openAgentChat() {
   const modal = document.getElementById('agent-modal');
-  if (modal) {
-    modal.style.display = 'flex';
-    modal.classList.add('open');
-    // אפס שיחה קודמת בכל פתיחה
+  if (!modal) return;
+  modal.style.display = 'flex';
+  modal.classList.add('open');
+  // אפס שיחה קודמת בכל פתיחה
+  try {
     const messages = document.getElementById('agent-messages');
     if (messages) messages.innerHTML = '';
     renderAgentWelcome();
-    // פוקוס על שדה הקלט
-    setTimeout(() => {
-      const input = document.getElementById('agent-input');
-      if (input) input.focus();
-    }, 300);
+  } catch (e) {
+    console.error('Agent welcome error:', e);
   }
+  // פוקוס על שדה הקלט
+  setTimeout(() => {
+    const input = document.getElementById('agent-input');
+    if (input) input.focus();
+  }, 300);
 }
 
 function closeAgentChat() {
