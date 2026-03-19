@@ -44,15 +44,42 @@ ${docsText}
 - תשובה קצרה ומדויקת עדיפה`;
 }
 
+function isGeminiEnabled() {
+  if (typeof APP_CONFIG === 'undefined') return false;
+  if (APP_CONFIG.useGeminiProxy) return true;
+  return !!(APP_CONFIG.allowDirectGemini && APP_CONFIG.geminiApiKey);
+}
+
 async function callGeminiAPI(query) {
+  if (!isGeminiEnabled()) return null;
+
+  const model = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.geminiModel) || 'gemini-2.0-flash';
+  const systemPrompt = buildSystemPrompt();
+
+  // ברירת מחדל: עבודה דרך backend proxy (מאובטח)
+  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.useGeminiProxy) {
+    const proxyUrl = APP_CONFIG.geminiProxyUrl || '/api/gemini';
+    const resp = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, systemPrompt, model })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err?.error || err?.message || `Proxy error ${resp.status}`);
+    }
+    const data = await resp.json();
+    return data?.text || null;
+  }
+
+  // מצב fallback לפיתוח בלבד (לא מומלץ בפרודקשן)
   const key = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.geminiApiKey) || '';
-  if (!key) return null;
+  if (!(typeof APP_CONFIG !== 'undefined' && APP_CONFIG.allowDirectGemini && key)) return null;
 
-  const model = APP_CONFIG.geminiModel || 'gemini-2.0-flash';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-
   const body = {
-    system_instruction: { parts: [{ text: buildSystemPrompt() }] },
+    system_instruction: { parts: [{ text: systemPrompt }] },
     contents: [{ parts: [{ text: query }] }],
     generationConfig: { temperature: 0.3, maxOutputTokens: 600 }
   };
@@ -345,7 +372,7 @@ function renderAgentWelcome() {
   const user = MOCK_DATA.currentUser;
   const isAdmin = user?.role === 'admin';
   const disabledUntil = window.__geminiTemporarilyDisabledUntil || 0;
-  const hasGemini = !!(typeof APP_CONFIG !== 'undefined' && APP_CONFIG.geminiApiKey) && Date.now() > disabledUntil;
+  const hasGemini = isGeminiEnabled() && Date.now() > disabledUntil;
 
   const suggestions = [
     '📅 מה האירועים במרץ?', '📅 מה האירועים באפריל?',
@@ -401,7 +428,7 @@ function sendAgentMessage() {
   container.innerHTML += `<div class="agent-msg agent-bot" id="${loadId}"><div class="agent-avatar">🤖</div><div class="agent-bubble agent-typing"><span></span><span></span><span></span></div></div>`;
   container.scrollTop = container.scrollHeight;
 
-  const hasGemini = !!(typeof APP_CONFIG !== 'undefined' && APP_CONFIG.geminiApiKey);
+  const hasGemini = isGeminiEnabled();
 
   if (hasGemini) {
     callGeminiAPI(query)

@@ -1,19 +1,15 @@
 /* ============================================================
-   הגדרות אפליקציה
+   הגדרות Frontend
    ============================================================
-   המפתח משותף לכל משתמשי האפליקציה – אין צורך שכל משתמש יגדיר בעצמו.
-
-   שלב 1: קבל מפתח חינמי מ-https://aistudio.google.com/app/apikey
-   שלב 2: הכנס אותו בשדה geminiApiKey למטה
-   שלב 3: (מומלץ) הגבל את המפתח בדומיין שלך ב-Google Cloud Console
-
-   Gemini 2.0 Flash – מגבלות חינמיות:
-     • 15 בקשות לדקה
-     • 1,000,000 tokens ליום
-     • ללא עלות
+   חשוב: לא שומרים מפתח Gemini בצד לקוח.
+   החיבור למודל מתבצע דרך backend proxy ב- /api/gemini
    ============================================================ */
 
 const APP_CONFIG = {
-  geminiApiKey: 'AIzaSyCT5A1VgfOJ4D5csdf9rzupfJhVaoY5Tao',
-  geminiModel:  'gemini-2.0-flash',
+  useGeminiProxy: true,
+  geminiProxyUrl: '/api/gemini',
+  geminiModel: 'gemini-2.0-flash',
+  // לשימוש פיתוח בלבד (לא מומלץ בפרודקשן):
+  allowDirectGemini: false,
+  geminiApiKey: '',
 };
