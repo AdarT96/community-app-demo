@@ -282,6 +282,18 @@ const AGENT = {
     const approved = MOCK_DATA.users.filter(u => u.status === 'approved');
     const keywords = this._extractKeywords(q);
     if (keywords.length === 0) return null;
+
+    // עדיפות 1: התאמה מדויקת לשם (כל המילים בשם צריכות להופיע)
+    const exactNameMatches = approved.filter(u =>
+      keywords.every(k => u.name.toLowerCase().includes(k))
+    );
+    if (exactNameMatches.length > 0) {
+      return {
+        text: exactNameMatches.length === 1 ? `מצאתי חבר תואם:` : `מצאתי ${exactNameMatches.length} חברים תואמים:`,
+        cards: exactNameMatches.map(u => this._personCard(u, isAdmin))
+      };
+    }
+
     const found = approved.filter(u =>
       keywords.some(k =>
         u.name.includes(k) ||
@@ -385,15 +397,12 @@ function renderAgentWelcome() {
   if (!container) return;
 
   const firstName = user?.name?.split(' ')[0] || 'שלום';
-  const modeTag = hasGemini
-    ? `<span style="background:#C8F7C5;color:#1B5E20;padding:2px 8px;border-radius:20px;font-size:.68rem;font-weight:700;vertical-align:middle">✨ Gemini AI</span>`
-    : `<span style="background:#E8DEF8;color:#4A0080;padding:2px 8px;border-radius:20px;font-size:.68rem;font-weight:700;vertical-align:middle">🤖 מצב חכם</span>`;
 
   container.innerHTML = `
     <div class="agent-msg agent-bot">
       <div class="agent-avatar">🤖</div>
       <div class="agent-bubble">
-        שלום ${firstName}! אני הסוכן החכם של המערך 👋 ${modeTag}<br/>
+        שלום ${firstName}! אני הסוכן החכם של המערך 👋<br/>
         שאל אותי על <strong>אירועים</strong>, <strong>חברים</strong>, <strong>מסמכים</strong> ועוד.<br/>
         <strong>מה תרצה לדעת?</strong>
       </div>
@@ -463,7 +472,6 @@ function renderGeminiResponse(text, container) {
       <div class="agent-avatar">🤖</div>
       <div class="agent-bubble">
         ${formatAgentText(text)}
-        <div style="margin-top:6px;font-size:.65rem;color:var(--md-on-surface-variant);opacity:.7">✨ Gemini AI</div>
       </div>
     </div>`;
 }
