@@ -5,6 +5,26 @@
 const AGENT = {
   history: [],
 
+  // ── מילות עצירה – לא ישמשו לחיפוש ──────────────────────
+  _stopWords: new Set([
+    'מה','מי','איפה','מתי','כמה','איך','למה','האם','יש','אין',
+    'של','על','עם','את','לי','לו','לה','לנו','לכם','לכן','להם',
+    'הוא','היא','הם','הן','אני','אתה','את','אנחנו','אתם','אתן',
+    'זה','זו','זאת','אלה','אלו','שם','פה','כאן','עכשיו','היום',
+    'נשמע','קורה','חדש','חדשות','בסדר','טוב','יפה','נחמד',
+  ]),
+
+  // ── ברכות / שיחה קטנה ────────────────────────────────────
+  _isSmallTalk(q) {
+    const greetings = [
+      'שלום','היי','הי','מה נשמע','מה קורה','מה המצב','מה שלומך',
+      'בוקר טוב','ערב טוב','לילה טוב','תודה','תודה רבה','מעולה',
+      'כל הכבוד','אוקיי','אוקי','ok','hello','hi','hey',
+      'מה אתה יכול','מה אתה','מה את','עזור','עזרה','help',
+    ];
+    return greetings.some(g => q.includes(g));
+  },
+
   // ── עיבוד שאלה ────────────────────────────────────────────
   processQuery(query) {
     const user = MOCK_DATA.currentUser;
@@ -12,6 +32,11 @@ const AGENT = {
 
     const q = query.trim().toLowerCase();
     const isAdmin = user.role === 'admin';
+
+    // ── ברכות / שיחה קטנה ────────────────────────────────────
+    if (this._isSmallTalk(q)) {
+      return this._defaultResponse(isAdmin);
+    }
 
     // ── אירועים לפי חודש ────────────────────────────────────
     const monthMatch = this._matchMonth(q);
@@ -149,7 +174,8 @@ const AGENT = {
   // ── חיפוש אדם ────────────────────────────────────────────
   _searchPerson(q, isAdmin) {
     const approved = MOCK_DATA.users.filter(u => u.status === 'approved');
-    const keywords = q.split(/\s+/).filter(w => w.length > 1);
+    const keywords = q.split(/\s+/).filter(w => w.length > 2 && !this._stopWords.has(w));
+    if (keywords.length === 0) return null;
 
     const found = approved.filter(u =>
       keywords.some(k =>
@@ -327,11 +353,10 @@ function openAgentChat() {
   if (modal) {
     modal.style.display = 'flex';
     modal.classList.add('open');
-    // הצג שאלות ראשוניות אם הצ'אט ריק
+    // אפס שיחה קודמת בכל פתיחה
     const messages = document.getElementById('agent-messages');
-    if (messages && messages.children.length === 0) {
-      renderAgentWelcome();
-    }
+    if (messages) messages.innerHTML = '';
+    renderAgentWelcome();
     // פוקוס על שדה הקלט
     setTimeout(() => {
       const input = document.getElementById('agent-input');
