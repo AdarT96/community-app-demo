@@ -382,6 +382,225 @@ const AGENT = {
     };
   },
 
+  // ── חיפוש לפי דרגה ────────────────────────────────────────
+  _searchByRankAnswer(q) {
+    const rankMap = [
+      { terms: ['רס"ב', 'רסב', 'רס ב'], label: 'רס"ב' },
+      { terms: ['רס"ל', 'רסל', 'רס ל'], label: 'רס"ל' },
+      { terms: ['רב"ל', 'רבל', 'רב ל'], label: 'רב"ל' },
+      { terms: ['רב סמל', 'רב-סמל'], label: 'רב סמל' },
+      { terms: ['סרן'], label: 'סרן' },
+      { terms: ['סגן'], label: 'סגן' },
+      { terms: ['טוראי'], label: 'טוראי' },
+      { terms: ['אלוף', 'תת אלוף'], label: 'אלוף' },
+    ];
+
+    const isRankQuery = (
+      q.includes('דרגה') || q.includes('דרגת') ||
+      q.includes('בדרגת') || q.includes('בעלי דרגת') ||
+      rankMap.some(r => r.terms.some(t => q.includes(t)))
+    );
+    if (!isRankQuery) return null;
+
+    const matched = rankMap.find(r => r.terms.some(t => q.includes(t)));
+    if (!matched) return null;
+
+    const approved = MOCK_DATA.getApprovedMembers();
+    const found = approved.filter(u =>
+      matched.terms.some(t => String(u.rank || '').includes(t))
+    );
+
+    if (found.length === 0) {
+      return { text: `לא נמצאו חברים מאושרים בדרגת ${matched.label}.`, cards: [] };
+    }
+
+    this._setContext({ type: 'personSearch', members: found });
+    return {
+      text: found.length === 1
+        ? `מצאתי חבר אחד בדרגת ${matched.label}:`
+        : `מצאתי ${found.length} חברים בדרגת ${matched.label}:`,
+      cards: found.map(u => this._personCard(u, false))
+    };
+  },
+
+  // ── חיפוש לפי כישורים / צורך ──────────────────────────────
+  _searchBySkillAnswer(q) {
+    const needIndicators = [
+      'מי יכול', 'מי יודע', 'מי מתמחה', 'מי עוסק', 'מי מומחה',
+      'יש מישהו', 'אני צריך', 'אנחנו צריכים', 'צריך מישהו',
+      'מי מטפל', 'מי עוזר', 'מי אחראי', 'מי יעזור',
+      'עזרה ב', 'עזרה עם', 'סיוע ב', 'ייעוץ ב',
+      'מי ה', // מי הרופא, מי המשפטן...
+    ];
+    const isNeedQuery = needIndicators.some(t => q.includes(t));
+    if (!isNeedQuery) return null;
+
+    const keywords = this._extractKeywords(q);
+    if (keywords.length === 0) return null;
+
+    const approved = MOCK_DATA.getApprovedMembers();
+    const found = approved.filter(u => {
+      const searchText = [
+        u.profession,
+        ...(u.skills || []),
+        u.bio || '',
+      ].join(' ').toLowerCase();
+      return keywords.some(k => searchText.includes(k));
+    });
+
+    if (found.length === 0) return null;
+
+    this._setContext({ type: 'personSearch', members: found });
+    return {
+      text: found.length === 1
+        ? `מצאתי חבר שיכול לעזור:`
+        : `מצאתי ${found.length} חברים שיכולים לעזור:`,
+      cards: found.map(u => this._personCard(u, false))
+    };
+  },
+
+  // ── חיפוש אירועים לפי סוג ──────────────────────────────────
+  _searchEventsByTypeAnswer(q) {
+    const typeMap = [
+      {
+        value: 'Gibbush', label: 'גיבוש',
+        terms: ['גיבוש', 'גיבושים', 'גיבושון'],
+        groupFilter: 'Gibbush'
+      },
+      {
+        value: 'training', label: 'הכשרה',
+        terms: ['הכשרה', 'הכשרות', 'קורס', 'אימון', 'תרגיל', 'tccc'],
+        groupFilter: null, eventType: 'training'
+      },
+      {
+        value: 'workshop', label: 'סדנה',
+        terms: ['סדנה', 'סדנאות', 'ורקשופ'],
+        groupFilter: null, eventType: 'workshop'
+      },
+      {
+        value: 'meeting', label: 'ישיבה',
+        terms: ['ישיבה', 'ישיבות', 'פגישה', 'פגישות', 'מטה'],
+        groupFilter: null, eventType: 'meeting'
+      },
+      {
+        value: 'social', label: 'אירוע חברתי',
+        terms: ['חברתי', 'מנגל', 'מסיבה', 'בריחה', 'בילוי'],
+        groupFilter: null, eventType: 'social'
+      },
+      {
+        value: 'ceremony', label: 'טקס',
+        terms: ['טקס', 'טקסים', 'עצמאות', 'יום הזיכרון'],
+        groupFilter: null, eventType: 'ceremony'
+      },
+      {
+        value: 'fitness', label: 'כושר',
+        terms: ['כושר', 'ריצה', 'ספורט'],
+        groupFilter: null, eventType: 'fitness'
+      },
+      {
+        value: 'Gadna', label: 'גדנ"ע',
+        terms: ['גדנע', 'גדנ"ע', 'גדנא', 'גדנעות'],
+        groupFilter: 'Gadna'
+      },
+    ];
+
+    const matched = typeMap.find(t => t.terms.some(term => q.includes(term)));
+    if (!matched) return null;
+
+    // חיפוש ספציפי – "הגיבוש הקרוב" / "הגיבוש הבא"
+    const wantsNext = q.includes('הקרוב') || q.includes('הבא') || q.includes('הקרובה') || q.includes('הבאה') || q.includes('מתי');
+
+    const monthNum = this._matchMonth(q);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const year = today.getFullYear();
+
+    let events = MOCK_DATA.events.filter(e => {
+      if (matched.groupFilter) return e.group === matched.groupFilter;
+      if (matched.eventType) return e.type === matched.eventType;
+      return false;
+    });
+
+    // סנן לפי חודש אם צוין
+    if (monthNum !== null) {
+      const prefix = `${year}-${String(monthNum).padStart(2, '0')}`;
+      events = events.filter(e => e.date.startsWith(prefix));
+    } else if (wantsNext) {
+      events = events.filter(e => new Date(e.date) >= today)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+      if (events.length > 0) {
+        const nextDate = events[0].date;
+        // אם שואלים "הקרוב" – החזר רק את הבא ביותר
+        if (q.includes('הקרוב') || q.includes('הבא') || q.includes('הקרובה') || q.includes('הבאה')) {
+          events = [events[0]];
+        }
+      }
+    } else {
+      events = events.sort((a, b) => new Date(a.date) - new Date(b.date));
+    }
+
+    if (events.length === 0) {
+      const monthNames = ['','ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+      const monthText = monthNum ? ` בחודש ${monthNames[monthNum]}` : '';
+      return { text: `לא נמצאו אירועי ${matched.label}${monthText}.`, cards: [] };
+    }
+
+    const monthNames = ['','ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+    const monthText = monthNum ? ` בחודש ${monthNames[monthNum]}` : '';
+    const prefix = wantsNext && !monthNum && events.length === 1 ? `📅 ${matched.label} קרוב:` : `📅 אירועי ${matched.label}${monthText} (${events.length}):`;
+
+    this._setContext({ type: 'eventSearch', events });
+    return {
+      text: prefix,
+      cards: events.map(e => this._eventCard(e))
+    };
+  },
+
+  // ── חיפוש מסמכים/טפסים לפי נושא ────────────────────────────
+  _searchDocByTopicAnswer(q) {
+    // זיהוי שאלות על מסמכים
+    const docIndicators = [
+      'טופס', 'מסמך', 'טפסים', 'מסמכים',
+      'הורדה', 'אישור', 'כתב', 'נוהל', 'תקנון',
+      'להירשם', 'הרשמה', 'הצטרפות',
+      'ויתור', 'אישור רפואי', 'תוכנית', 'לוח זמנים',
+    ];
+    if (!docIndicators.some(t => q.includes(t))) return null;
+
+    const keywords = this._extractKeywords(q);
+    if (keywords.length === 0) return null;
+
+    const allItems = [];
+    MOCK_DATA.documents.forEach(cat => {
+      cat.items.forEach(item => {
+        const score = keywords.filter(k =>
+          item.title.includes(k) ||
+          item.description.includes(k) ||
+          cat.category.includes(k)
+        ).length;
+        if (score > 0) allItems.push({ ...item, category: cat.category, score });
+      });
+    });
+
+    if (allItems.length === 0) return null;
+
+    allItems.sort((a, b) => b.score - a.score);
+    const top = allItems.slice(0, 5);
+
+    return {
+      text: top.length === 1
+        ? `📋 מצאתי מסמך תואם:`
+        : `📋 מצאתי ${top.length} מסמכים תואמים:`,
+      cards: top.map(i => ({
+        type: 'document',
+        title: i.title,
+        category: i.category,
+        description: i.description,
+        docType: i.type,
+        url: i.url
+      }))
+    };
+  },
+
   _looksLikePersonQuery(q, keywords) {
     const personIndicators = ['פרטים', 'מידע', 'מי', 'טלפון', 'וואטסאפ', 'חבר', 'איש', 'על'];
     if (personIndicators.some(t => q.includes(t))) return true;
@@ -512,6 +731,22 @@ const AGENT = {
       return { text: professionExistsAnswer.text, cards: professionExistsAnswer.cards };
     }
 
+    // ── חיפוש לפי דרגה ────────────────────────────────────
+    const rankAnswer = this._searchByRankAnswer(q);
+    if (rankAnswer) return rankAnswer;
+
+    // ── חיפוש לפי כישורים/צורך ───────────────────────────
+    const skillAnswer = this._searchBySkillAnswer(q);
+    if (skillAnswer) return skillAnswer;
+
+    // ── חיפוש אירועים לפי סוג (גיבוש / הכשרה / סדנה...) ──
+    const eventTypeAnswer = this._searchEventsByTypeAnswer(q);
+    if (eventTypeAnswer) return eventTypeAnswer;
+
+    // ── חיפוש מסמכים לפי נושא ────────────────────────────
+    const docTopicAnswer = this._searchDocByTopicAnswer(q);
+    if (docTopicAnswer) return docTopicAnswer;
+
     // ── חודש ───────────────────────────────────────────────
     const monthMatch = this._matchMonth(q);
     if (monthMatch !== null) return this._getEventsByMonth(monthMatch, isAdmin);
@@ -536,7 +771,7 @@ const AGENT = {
     }
 
     // ── מסמכים ───────────────────────────────────────────
-    if (q.includes('מסמך') || q.includes('מסמכים') || q.includes('טופס') || q.includes('טפסים') || q.includes('הורדה') || q.includes('קישור')) {
+    if (q.includes('מסמך') || q.includes('מסמכים') || q.includes('טופס') || q.includes('טפסים') || q.includes('הורדה') || q.includes('קישור') || q.includes('אישור') || q.includes('ויתור')) {
       return this._getDocuments(q, user);
     }
 
@@ -711,7 +946,16 @@ const AGENT = {
   },
 
   _defaultResponse(isAdmin) {
-    const s = ['מה האירועים במרץ?','מתי הגיבוש הקרוב?','פרטים על דוד לוי','מי יום הולדת השבוע?','טופס הרשמה'];
+    const s = [
+      'מתי הגיבוש הקרוב?',
+      'גיבוש בחודש מאי?',
+      'מה האירועים במרץ?',
+      'יש פסיכולוג?',
+      'מי יכול לעזור בנושא משפטי?',
+      'טופס הרשמה לגיבוש',
+      'מי בדרגת סרן?',
+      'פרטים על דוד לוי',
+    ];
     if (isAdmin) s.push('כמה חברים יש במערך?');
     return { text: 'לא הצלחתי להבין את השאלה. נסה לשאול:', suggestions: s, cards: [] };
   },
@@ -750,9 +994,14 @@ function renderAgentWelcome() {
   const hasGemini = isGeminiEnabled() && Date.now() > disabledUntil;
 
   const suggestions = [
-    '📅 מה האירועים במרץ?', '📅 מה האירועים באפריל?',
-    '🏕️ מתי הגיבוש הקרוב?', '👤 פרטים על דוד לוי',
-    '🎂 מי יום הולדת השבוע?', '📂 טופס הרשמה',
+    '🏕️ מתי הגיבוש הקרוב?',
+    '📅 אירועים בחודש מרץ',
+    '🧑‍⚕️ יש פסיכולוג?',
+    '⚖️ מי יכול לעזור בנושא משפטי?',
+    '🪖 מי בדרגת סרן?',
+    '📂 טופס הרשמה לגיבוש',
+    '👤 פרטים על דוד לוי',
+    '🎂 מי יום הולדת השבוע?',
   ];
   if (isAdmin) suggestions.push('📊 כמה חברים יש?');
 
