@@ -168,6 +168,22 @@ const AGENT = {
     return keywords.some(k => k.length >= 3 && [...allNameTokens].some(t => t.startsWith(k) || k.startsWith(t)));
   },
 
+  _looksLikeEventQuery(q, keywords) {
+    const eventIndicators = ['אירוע', 'אירועים', 'לוז', 'לו"ז', 'לוח שנה', 'מועד', 'תאריך', 'מתי', 'גיבוש', 'סדנה', 'טקס', 'ישיבה', 'אימון', 'תרגיל'];
+    if (eventIndicators.some(t => q.includes(t))) return true;
+
+    // בחיפוש כללי: רק אם יש דמיון אמיתי לכותרות/סוגי אירועים
+    const eventTokens = new Set(
+      MOCK_DATA.events.flatMap(e => [
+        ...String(e.title || '').toLowerCase().split(/[\s\-־]+/),
+        ...String(e.location || '').toLowerCase().split(/[\s\-־]+/),
+        ...String(MOCK_DATA.typeLabel(e.type) || '').toLowerCase().split(/[\s\-־]+/)
+      ]).filter(Boolean)
+    );
+
+    return keywords.some(k => k.length >= 3 && [...eventTokens].some(t => t.startsWith(k) || k.startsWith(t)));
+  },
+
   _isSmallTalk(q) {
     const g = ['שלום','היי','הי','מה נשמע','מה קורה','מה המצב','מה שלומך',
       'בוקר טוב','ערב טוב','לילה טוב','תודה','תודה רבה','מעולה',
@@ -293,8 +309,10 @@ const AGENT = {
       const personResult = this._searchPerson(q, isAdmin);
       if (personResult) return personResult;
     }
-    const eventResult = this._searchEvent(q, isAdmin);
-    if (eventResult) return eventResult;
+    if (this._looksLikeEventQuery(q, genericKeywords)) {
+      const eventResult = this._searchEvent(q, isAdmin);
+      if (eventResult) return eventResult;
+    }
 
     return this._defaultResponse(isAdmin);
   },
