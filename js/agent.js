@@ -601,6 +601,73 @@ const AGENT = {
     };
   },
 
+  // ── חיפוש נסיעות משותפות ─────────────────────────────────
+  _searchRidesAnswer(q) {
+    const rideIndicators = [
+      'נסיעה', 'נסיעות', 'נוסע', 'נוסעים', 'נוסעת', 'מסיע', 'טרמפ', 'טרמפים',
+      'מאיפה נוסע', 'מי נוסע', 'נסע', 'מוביל', 'נסיעה משותפת',
+    ];
+    const isRideQuery = rideIndicators.some(t => q.includes(t));
+    if (!isRideQuery) return null;
+
+    // אסוף את כל הנסיעות מכל האירועים
+    const allRides = [];
+    Object.entries(MOCK_DATA.rides).forEach(([eventId, rides]) => {
+      const ev = MOCK_DATA.events.find(e => e.id === parseInt(eventId));
+      if (!ev) return;
+      rides.forEach(ride => {
+        allRides.push({ ...ride, event: ev });
+      });
+    });
+
+    if (allRides.length === 0) {
+      return { text: 'לא פורסמו נסיעות עדיין. ניתן להציע נסיעה בלחיצה על אירוע בלוח השנה 🚗', cards: [] };
+    }
+
+    // סנן לפי מיקום אם צוין
+    const keywords = this._extractKeywords(q);
+    const locationKeywords = keywords.filter(k =>
+      !['נסיעה','נסיעות','נוסע','נוסעים','נוסעת','מסיע','טרמפ','מי','מאיפה','יש','לאירוע'].includes(k)
+    );
+
+    // סנן לפי אירוע אם צוין
+    let filteredRides = allRides;
+    if (locationKeywords.length > 0) {
+      filteredRides = allRides.filter(r => {
+        const fromLower = r.fromLocation.toLowerCase();
+        const titleLower = r.event.title.toLowerCase();
+        return locationKeywords.some(k => fromLower.includes(k) || titleLower.includes(k) || r.event.location.toLowerCase().includes(k));
+      });
+    }
+
+    if (filteredRides.length === 0) {
+      return {
+        text: `לא נמצאו נסיעות תואמות${locationKeywords.length ? ' לחיפוש שלך' : ''}. ניתן להציע נסיעה בלחיצה על אירוע בלוח השנה 🚗`,
+        cards: []
+      };
+    }
+
+    const cards = filteredRides.slice(0, 6).map(r => ({
+      type: 'ride',
+      driverName: r.userName,
+      avatar: r.avatar,
+      color: r.color,
+      fromLocation: r.fromLocation,
+      totalSeats: r.totalSeats,
+      availableSeats: r.totalSeats - r.passengers.length,
+      passengers: r.passengers,
+      eventTitle: r.event.title,
+      eventDate: MOCK_DATA.formatDate(r.event.date),
+      eventId: r.event.id,
+    }));
+
+    const prefix = filteredRides.length === 1
+      ? '🚗 נמצאה נסיעה אחת:'
+      : `🚗 נמצאו ${filteredRides.length} נסיעות:`;
+
+    return { text: prefix, cards };
+  },
+
   _looksLikePersonQuery(q, keywords) {
     const personIndicators = ['פרטים', 'מידע', 'מי', 'טלפון', 'וואטסאפ', 'חבר', 'איש', 'על'];
     if (personIndicators.some(t => q.includes(t))) return true;
@@ -730,6 +797,10 @@ const AGENT = {
       if (professionExistsAnswer.context) this._setContext(professionExistsAnswer.context);
       return { text: professionExistsAnswer.text, cards: professionExistsAnswer.cards };
     }
+
+    // ── חיפוש נסיעות ──────────────────────────────────────
+    const ridesAnswer = this._searchRidesAnswer(q);
+    if (ridesAnswer) return ridesAnswer;
 
     // ── חיפוש לפי דרגה ────────────────────────────────────
     const rankAnswer = this._searchByRankAnswer(q);
@@ -1167,6 +1238,32 @@ function renderAgentCard(card) {
           <div style="font-size:.72rem;color:var(--md-on-surface-variant)">${card.category} · ${card.description}</div>
         </div>
         <span class="agent-card-action">›</span>
+      </div>`;
+  }
+
+  if (card.type === 'ride') {
+    const isFull = card.availableSeats === 0;
+    const passengerNames = card.passengers.length > 0
+      ? card.passengers.map(p => p.name.split(' ')[0]).join(', ')
+      : 'אין עדיין';
+    return `
+      <div class="agent-card agent-card-person" onclick="navigateTo('schedule'); closeAgentChat(); setTimeout(()=>showEventDetail(${card.eventId}),300)">
+        <div class="agent-card-header" style="background:${card.color}15">
+          <div class="agent-person-avatar" style="background:${card.color}">${card.avatar}</div>
+          <div style="flex:1">
+            <div class="agent-card-title">${card.driverName}</div>
+            <div style="font-size:.75rem;color:var(--md-on-surface-variant)">📍 מ: ${card.fromLocation}</div>
+            <div style="font-size:.72rem;color:var(--md-on-surface-variant)">📅 ${card.eventTitle} · ${card.eventDate}</div>
+          </div>
+          <div style="text-align:center;min-width:44px">
+            <div style="font-size:1.3rem;font-weight:700;color:${isFull ? '#B0B0B0' : 'var(--md-primary)'}">${card.availableSeats}</div>
+            <div style="font-size:.65rem;color:var(--md-on-surface-variant)">מקומות</div>
+          </div>
+        </div>
+        <div class="agent-card-footer">
+          <span style="font-size:.72rem;color:var(--md-on-surface-variant)">נוסעים: ${passengerNames}</span>
+          <span class="agent-card-action">${isFull ? '🔴 מלא' : 'לחץ להצטרף ›'}</span>
+        </div>
       </div>`;
   }
 
