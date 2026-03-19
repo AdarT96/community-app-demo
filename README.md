@@ -4,10 +4,21 @@
 
 הפרויקט משתמש ב-Proxy בשרת (`/api/gemini`) כדי שה-API key לא ייחשף ב-frontend.
 
-### 1) התקנת תלויות
+### 1) בחירת צורת הרצה
+
+#### אפשרות A (מומלץ אצלך כרגע): Python בלבד
+
+לא דורש npm/node.
+
+```bash
+python server.py
+```
+
+#### אפשרות B: Node.js (אם מותקן npm)
 
 ```bash
 npm install
+npm start
 ```
 
 ### 2) הגדרת משתני סביבה
@@ -27,9 +38,8 @@ PORT=3000
 
 ### 3) הרצה
 
-```bash
-npm start
-```
+- אם אין npm: `python server.py`
+- אם יש npm: `npm start`
 
 פתח בדפדפן:
 
