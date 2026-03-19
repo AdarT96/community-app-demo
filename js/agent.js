@@ -104,6 +104,8 @@ async function callGeminiAPI(query) {
 
 const AGENT = {
 
+  _lastContext: null,
+
   _stopWords: new Set([
     'מה','מי','איפה','מתי','כמה','איך','למה','האם','יש','אין',
     'של','על','עם','את','לי','לו','לה','לנו','לכם','לכן','להם',
@@ -120,6 +122,53 @@ const AGENT = {
       .toLowerCase()
       .split(/[\s\-־]+/)
       .filter(Boolean);
+  },
+
+  _setContext(ctx) {
+    this._lastContext = { ...ctx, _ts: Date.now() };
+  },
+
+  _getContext() {
+    if (!this._lastContext) return null;
+    const maxAgeMs = 5 * 60 * 1000;
+    if (Date.now() - this._lastContext._ts > maxAgeMs) {
+      this._lastContext = null;
+      return null;
+    }
+    return this._lastContext;
+  },
+
+  _handleFollowUpPeopleQuery(q, isAdmin) {
+    const ctx = this._getContext();
+    if (!ctx) return null;
+
+    const isFollowUp = (
+      q === 'מי זה' || q === 'מי זה?' ||
+      q === 'מי הם' || q === 'מי הם?' ||
+      q === 'מי אלו' || q === 'מי אלו?' ||
+      q.includes('מי זה') || q.includes('מי הם') || q.includes('מי אלו') ||
+      q.includes('תראה אותם') || q.includes('מי האנשים')
+    );
+
+    if (!isFollowUp) return null;
+    if (!Array.isArray(ctx.members)) return null;
+
+    const members = ctx.members;
+    if (members.length === 0) {
+      return { text: 'אין חברים להצגה עבור השאלה הקודמת.', cards: [] };
+    }
+
+    if (members.length === 1) {
+      return {
+        text: `זה החבר שנמצא:`,
+        cards: [this._personCard(members[0], isAdmin)]
+      };
+    }
+
+    return {
+      text: `אלה החברים שנמצאו (${members.length}):`,
+      cards: members.slice(0, 8).map(u => this._personCard(u, isAdmin))
+    };
   },
 
   _matchGroupFromQuery(q) {
@@ -145,12 +194,14 @@ const AGENT = {
     const group = this._matchGroupFromQuery(q);
     const members = MOCK_DATA.getApprovedMembers(group || 'All');
     const groupLabel = group ? MOCK_DATA.groupLabel(group) : 'במערך';
+    const memberWord = members.length === 1 ? 'חבר' : 'חברים';
 
     return {
       text: group
-        ? `יש ${members.length} חברים מאושרים בקבוצת ${groupLabel}.`
-        : `יש ${members.length} חברים מאושרים ${groupLabel}.`,
-      cards: []
+        ? `יש ${members.length} ${memberWord} מאושרים בקבוצת ${groupLabel}.`
+        : `יש ${members.length} ${memberWord} מאושרים ${groupLabel}.`,
+      cards: [],
+      context: { type: 'memberCount', members, group }
     };
   },
 
@@ -159,13 +210,13 @@ const AGENT = {
     if (!isCountQuery) return null;
 
     const professionMap = [
-      { label: 'מהנדסים', terms: ['מהנדס', 'מהנדסים', 'הנדסה'] },
-      { label: 'פסיכולוגים', terms: ['פסיכולוג', 'פסיכולוגית', 'פסיכולוגים', 'פסיכולוגיות'] },
-      { label: 'מאמנים', terms: ['מאמן', 'מאמנת', 'מאמנים', 'מאמנות'] },
-      { label: 'פרמדיקים', terms: ['פרמדיק', 'פרמדיקים'] },
-      { label: 'מדריכים', terms: ['מדריך', 'מדריכה', 'מדריכים', 'מדריכות'] },
-      { label: 'מנהלי פרויקטים', terms: ['מנהל פרויקטים', 'מנהלת פרויקטים', 'פרויקטים'] },
-      { label: 'מעצבים', terms: ['מעצב', 'מעצבת', 'מעצבים', 'מעצבות', 'ux', 'ui'] },
+      { singular: 'מהנדס', plural: 'מהנדסים', terms: ['מהנדס', 'מהנדסים', 'הנדסה'] },
+      { singular: 'פסיכולוג', plural: 'פסיכולוגים', terms: ['פסיכולוג', 'פסיכולוגית', 'פסיכולוגים', 'פסיכולוגיות'] },
+      { singular: 'מאמן', plural: 'מאמנים', terms: ['מאמן', 'מאמנת', 'מאמנים', 'מאמנות'] },
+      { singular: 'פרמדיק', plural: 'פרמדיקים', terms: ['פרמדיק', 'פרמדיקים'] },
+      { singular: 'מדריך', plural: 'מדריכים', terms: ['מדריך', 'מדריכה', 'מדריכים', 'מדריכות'] },
+      { singular: 'מנהל פרויקטים', plural: 'מנהלי פרויקטים', terms: ['מנהל פרויקטים', 'מנהלת פרויקטים', 'פרויקטים'] },
+      { singular: 'מעצב', plural: 'מעצבים', terms: ['מעצב', 'מעצבת', 'מעצבים', 'מעצבות', 'ux', 'ui'] },
     ];
 
     const matched = professionMap.find(p => p.terms.some(t => q.includes(t)));
@@ -181,11 +232,16 @@ const AGENT = {
     const count = members.filter(u =>
       matched.terms.some(t => String(u.profession || '').toLowerCase().includes(t))
     ).length;
+    const matchedMembers = members.filter(u =>
+      matched.terms.some(t => String(u.profession || '').toLowerCase().includes(t))
+    );
 
     const groupText = group ? ` בקבוצת ${MOCK_DATA.groupLabel(group)}` : '';
+    const professionWord = count === 1 ? matched.singular : matched.plural;
     return {
-      text: `יש ${count} ${matched.label} מאושרים${groupText}.`,
-      cards: []
+      text: `יש ${count} ${professionWord} מאושרים${groupText}.`,
+      cards: [],
+      context: { type: 'professionCount', members: matchedMembers, group, profession: professionWord }
     };
   },
 
@@ -292,14 +348,23 @@ const AGENT = {
     const q = query.trim().toLowerCase();
     const isAdmin = user.role === 'admin';
 
+    const followUpPeople = this._handleFollowUpPeopleQuery(q, isAdmin);
+    if (followUpPeople) return followUpPeople;
+
     if (this._isSmallTalk(q)) return this._smallTalkResponse();
 
     // ── שאלות כמות/ספירה (ללא כרטיסים) ────────────────────
     const countAnswer = this._countMembersAnswer(q);
-    if (countAnswer) return countAnswer;
+    if (countAnswer) {
+      if (countAnswer.context) this._setContext(countAnswer.context);
+      return { text: countAnswer.text, cards: countAnswer.cards };
+    }
 
     const professionCountAnswer = this._countProfessionAnswer(q);
-    if (professionCountAnswer) return professionCountAnswer;
+    if (professionCountAnswer) {
+      if (professionCountAnswer.context) this._setContext(professionCountAnswer.context);
+      return { text: professionCountAnswer.text, cards: professionCountAnswer.cards };
+    }
 
     // ── חודש ───────────────────────────────────────────────
     const monthMatch = this._matchMonth(q);
