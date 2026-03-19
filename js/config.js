@@ -14,6 +14,6 @@
    ============================================================ */
 
 const APP_CONFIG = {
-  geminiApiKey: '',   // ← הכנס כאן מפתח API אחד לכולם (חינמי מ-Google AI Studio)
+  geminiApiKey: 'AIzaSyCT5A1VgfOJ4D5csdf9rzupfJhVaoY5Tao',
   geminiModel:  'gemini-2.0-flash',
 };
