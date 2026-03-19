@@ -95,6 +95,14 @@ const AGENT = {
     return g.some(w => q.includes(w));
   },
 
+  _smallTalkResponse() {
+    return {
+      text: 'אני מעולה, תודה ששאלת 😊 איך אפשר לעזור?',
+      suggestions: ['מתי הגיבוש הקרוב?', 'מה האירועים במרץ?', 'פרטים על דוד לוי'],
+      cards: []
+    };
+  },
+
   // ── חילוץ מילות מפתח + הסרת קידומות עבריות ──────────────
   _extractKeywords(q) {
     const prefixes = ['ה','ב','ל','מ','כ','ו','ש'];
@@ -152,7 +160,7 @@ const AGENT = {
     const q = query.trim().toLowerCase();
     const isAdmin = user.role === 'admin';
 
-    if (this._isSmallTalk(q)) return this._defaultResponse(isAdmin);
+    if (this._isSmallTalk(q)) return this._smallTalkResponse();
 
     // ── חודש ───────────────────────────────────────────────
     const monthMatch = this._matchMonth(q);
@@ -336,7 +344,8 @@ function closeAgentChat() {
 function renderAgentWelcome() {
   const user = MOCK_DATA.currentUser;
   const isAdmin = user?.role === 'admin';
-  const hasGemini = !!(typeof APP_CONFIG !== 'undefined' && APP_CONFIG.geminiApiKey);
+  const disabledUntil = window.__geminiTemporarilyDisabledUntil || 0;
+  const hasGemini = !!(typeof APP_CONFIG !== 'undefined' && APP_CONFIG.geminiApiKey) && Date.now() > disabledUntil;
 
   const suggestions = [
     '📅 מה האירועים במרץ?', '📅 מה האירועים באפריל?',
@@ -404,7 +413,11 @@ function sendAgentMessage() {
       })
       .catch(err => {
         const el = document.getElementById(loadId); if (el) el.remove();
-        container.innerHTML += `<div class="agent-msg agent-bot"><div class="agent-avatar">🤖</div><div class="agent-bubble" style="border-right:3px solid var(--md-error)">⚠️ שגיאת Gemini: ${escapeHtml(err.message)}</div></div>`;
+        const msg = String(err?.message || '').toLowerCase();
+        const isQuota = msg.includes('quota') || msg.includes('rate') || msg.includes('exceeded') || msg.includes('429') || msg.includes('resource_exhausted');
+        if (isQuota) {
+          window.__geminiTemporarilyDisabledUntil = Date.now() + 60 * 1000;
+        }
         renderAgentResponse(AGENT.processQuery(query), container);
         container.scrollTop = container.scrollHeight;
       });
