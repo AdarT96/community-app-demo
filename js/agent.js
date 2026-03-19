@@ -147,8 +147,7 @@ const AGENT = {
   },
 
   processQuery(query) {
-    const user = MOCK_DATA.currentUser;
-    if (!user) return { text: 'יש להתחבר תחילה כדי להשתמש בסוכן.', cards: [] };
+    const user = MOCK_DATA.currentUser || { name: 'אורח', role: 'user', group: 'All' };
 
     const q = query.trim().toLowerCase();
     const isAdmin = user.role === 'admin';
