@@ -323,6 +323,65 @@ const AGENT = {
     };
   },
 
+  _existsProfessionAnswer(q) {
+    const isCountQuery = q.includes('כמה') || q.includes('מספר') || q.includes('כמות');
+    if (isCountQuery) return null;
+
+    const looksLikeExistenceQuestion = q.includes('יש ') || q.startsWith('יש') || q.includes('קיים') || q.includes('קיימת');
+    if (!looksLikeExistenceQuestion) return null;
+
+    const professionMap = [
+      { singular: 'מהנדס', plural: 'מהנדסים', terms: ['מהנדס', 'מהנדסים', 'הנדסה'] },
+      { singular: 'פסיכולוג', plural: 'פסיכולוגים', terms: ['פסיכולוג', 'פסיכולוגית', 'פסיכולוגים', 'פסיכולוגיות'] },
+      { singular: 'מאמן', plural: 'מאמנים', terms: ['מאמן', 'מאמנת', 'מאמנים', 'מאמנות'] },
+      { singular: 'פרמדיק', plural: 'פרמדיקים', terms: ['פרמדיק', 'פרמדיקים'] },
+      { singular: 'מדריך', plural: 'מדריכים', terms: ['מדריך', 'מדריכה', 'מדריכים', 'מדריכות'] },
+      { singular: 'מנהל פרויקטים', plural: 'מנהלי פרויקטים', terms: ['מנהל פרויקטים', 'מנהלת פרויקטים', 'פרויקטים'] },
+      { singular: 'מעצב', plural: 'מעצבים', terms: ['מעצב', 'מעצבת', 'מעצבים', 'מעצבות', 'ux', 'ui'] },
+    ];
+
+    const matched = professionMap.find(p => p.terms.some(t => q.includes(t)));
+    if (!matched) return null;
+
+    let group = null;
+    if (this._isAllGroupsQuery(q)) {
+      group = 'All';
+    } else {
+      group = this._matchGroupFromQuery(q);
+      if (!group && (q.includes('בקבוצה') || q.includes('בקבוצה שלי'))) {
+        const currentGroup = MOCK_DATA.currentUser?.group;
+        if (currentGroup && currentGroup !== 'All') group = currentGroup;
+      }
+    }
+
+    const members = MOCK_DATA.getApprovedMembers(group || 'All');
+    const matchedMembers = members.filter(u =>
+      matched.terms.some(t => String(u.profession || '').toLowerCase().includes(t))
+    );
+
+    const count = matchedMembers.length;
+    const professionWord = count === 1 ? matched.singular : matched.plural;
+    const groupText = group && group !== 'All' ? ` בקבוצת ${MOCK_DATA.groupLabel(group)}` : ' בכל הקבוצות';
+
+    const text = count > 0
+      ? `כן, יש ${count} ${professionWord} ${this._statusWord(count)}${groupText}.`
+      : `לא, אין ${matched.plural} ${this._statusWord(2)}${groupText}.`;
+
+    return {
+      text,
+      cards: [],
+      context: {
+        type: 'professionCount',
+        members: matchedMembers,
+        group: group || 'All',
+        profession: professionWord,
+        professionTerms: matched.terms,
+        professionSingular: matched.singular,
+        professionPlural: matched.plural,
+      }
+    };
+  },
+
   _looksLikePersonQuery(q, keywords) {
     const personIndicators = ['פרטים', 'מידע', 'מי', 'טלפון', 'וואטסאפ', 'חבר', 'איש', 'על'];
     if (personIndicators.some(t => q.includes(t))) return true;
@@ -445,6 +504,12 @@ const AGENT = {
     if (professionCountAnswer) {
       if (professionCountAnswer.context) this._setContext(professionCountAnswer.context);
       return { text: professionCountAnswer.text, cards: professionCountAnswer.cards };
+    }
+
+    const professionExistsAnswer = this._existsProfessionAnswer(q);
+    if (professionExistsAnswer) {
+      if (professionExistsAnswer.context) this._setContext(professionExistsAnswer.context);
+      return { text: professionExistsAnswer.text, cards: professionExistsAnswer.cards };
     }
 
     // ── חודש ───────────────────────────────────────────────
