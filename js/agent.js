@@ -110,9 +110,17 @@ const AGENT = {
     'הוא','היא','הם','הן','אני','אתה','את','אנחנו','אתם','אתן',
     'זה','זו','זאת','אלה','אלו','שם','פה','כאן','עכשיו','היום',
     'נשמע','קורה','חדש','חדשות','בסדר','טוב','יפה','נחמד',
-    'תן','תני','תנו','רוצה','רוצים','תאריך','פרטים','מידע',
+    'תן','תני','תנו','תתן','רוצה','רוצים','תאריך','פרטים','מידע',
+    'כל','הכל','שיש','לך','לי',
     'הבא','הקרוב','הבאה','הקרובה','הבאים','הקרובים',
   ]),
+
+  _nameTokens(name) {
+    return String(name || '')
+      .toLowerCase()
+      .split(/[\s\-־]+/)
+      .filter(Boolean);
+  },
 
   _isSmallTalk(q) {
     const g = ['שלום','היי','הי','מה נשמע','מה קורה','מה המצב','מה שלומך',
@@ -283,7 +291,33 @@ const AGENT = {
     const keywords = this._extractKeywords(q);
     if (keywords.length === 0) return null;
 
-    // עדיפות 1: התאמה מדויקת לשם (כל המילים בשם צריכות להופיע)
+    // עדיפות 1: חיפוש לפי שם (ולהימנע מהתאמות רחבות מה-bio/skills)
+    const nameKeywords = keywords.filter(k =>
+      approved.some(u => u.name.toLowerCase().includes(k))
+    );
+
+    if (nameKeywords.length > 0) {
+      // התאמה חזקה: כל מילה חייבת להיות טוקן בשם ("דוד" לא יפול על "DevOps")
+      const strongNameMatches = approved.filter(u => {
+        const tokens = this._nameTokens(u.name);
+        return nameKeywords.every(k => tokens.some(t => t === k || t.startsWith(k)));
+      });
+
+      // העדפה לשם שמתחיל במילת החיפוש (למשל "דוד" -> "דוד לוי" לפני "בן-דוד")
+      const startsWithNameMatches = strongNameMatches.filter(u =>
+        nameKeywords.every(k => u.name.toLowerCase().startsWith(k))
+      );
+
+      const finalNameMatches = startsWithNameMatches.length > 0 ? startsWithNameMatches : strongNameMatches;
+
+      if (finalNameMatches.length > 0) {
+        return {
+          text: finalNameMatches.length === 1 ? `מצאתי חבר תואם:` : `מצאתי ${finalNameMatches.length} חברים תואמים:`,
+          cards: finalNameMatches.map(u => this._personCard(u, isAdmin))
+        };
+      }
+    }
+
     const exactNameMatches = approved.filter(u =>
       keywords.every(k => u.name.toLowerCase().includes(k))
     );
