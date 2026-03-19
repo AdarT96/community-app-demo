@@ -156,11 +156,12 @@ ul { list-style: none; }
   display: flex;
   background: var(--md-surface);
   border-top: 1px solid var(--md-outline-variant);
-  padding: 8px 0 16px;
+  padding: 8px 6px 16px;
   flex-shrink: 0;
 }
 .nav-item {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -171,7 +172,7 @@ ul { list-style: none; }
   position: relative;
 }
 .nav-item .nav-icon {
-  width: 64px; height: 32px;
+  width: 56px; height: 32px;
   border-radius: var(--radius-full);
   display: flex; align-items: center; justify-content: center;
   font-size: 1.2rem;

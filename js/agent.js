@@ -385,14 +385,25 @@ const AGENT = {
   // ── חיפוש לפי דרגה ────────────────────────────────────────
   _searchByRankAnswer(q) {
     const rankMap = [
-      { terms: ['רס"ב', 'רסב', 'רס ב'], label: 'רס"ב' },
-      { terms: ['רס"ל', 'רסל', 'רס ל'], label: 'רס"ל' },
-      { terms: ['רב"ל', 'רבל', 'רב ל'], label: 'רב"ל' },
-      { terms: ['רב סמל', 'רב-סמל'], label: 'רב סמל' },
-      { terms: ['סרן'], label: 'סרן' },
-      { terms: ['סגן'], label: 'סגן' },
       { terms: ['טוראי'], label: 'טוראי' },
-      { terms: ['אלוף', 'תת אלוף'], label: 'אלוף' },
+      { terms: ['רב"ט', 'רבט', 'רב טוראי', 'רב-טוראי'], label: 'רב"ט' },
+      { terms: ['סמל'], label: 'סמל' },
+      { terms: ['סמ"ר', 'סמר', 'סמל ראשון', 'סמל-ראשון'], label: 'סמ"ר' },
+      { terms: ['סרן'], label: 'סרן' },
+      { terms: ['רס"ל', 'רסל', 'רס ל', 'רב-סמל', 'רב סמל'], label: 'רס"ל' },
+      { terms: ['רס"ר', 'רסר', 'רס ר', 'רב-סמל ראשון', 'רב סמל ראשון'], label: 'רס"ר' },
+      { terms: ['רס"ם', 'רסם', 'רס מ', 'רב-סמל מתקדם', 'רב סמל מתקדם'], label: 'רס"ם' },
+      { terms: ['רס"ב', 'רסב', 'רס ב', 'רב-סמל בכיר', 'רב סמל בכיר'], label: 'רס"ב' },
+      { terms: ['רנ"ם', 'רנם', 'רנ מ', 'רב-נגד משנה', 'רב נגד משנה'], label: 'רנ"ם' },
+      { terms: ['רנ"ג', 'רנג', 'רנ ג', 'רב-נגד', 'רב נגד'], label: 'רנ"ג' },
+      { terms: ['סג"ם', 'סגם', 'סגן-משנה', 'סגן משנה'], label: 'סג"ם' },
+      { terms: ['סגן'], label: 'סגן' },
+      { terms: ['רס"ן', 'רסן', 'רס ן', 'רב-סרן', 'רב סרן'], label: 'רס"ן' },
+      { terms: ['סא"ל', 'סאל', 'סא ל', 'סגן-אלוף', 'סגן אלוף'], label: 'סא"ל' },
+      { terms: ['אל"ם', 'אלם', 'אל מ', 'אלוף-משנה', 'אלוף משנה'], label: 'אל"ם' },
+      { terms: ['תא"ל', 'תאל', 'תא ל', 'תת-אלוף', 'תת אלוף'], label: 'תא"ל' },
+      { terms: ['אלוף'], label: 'אלוף' },
+      { terms: ['רא"ל', 'ראל', 'רא ל', 'רב-אלוף', 'רב אלוף'], label: 'רא"ל' },
     ];
 
     const isRankQuery = (
@@ -706,11 +717,32 @@ const AGENT = {
     return g.some(w => q.includes(w));
   },
 
-  _smallTalkResponse() {
-    return {
-      text: 'אני מעולה, תודה ששאלת 😊 איך אפשר לעזור?',
-      cards: []
-    };
+  _smallTalkResponse(q = '') {
+    const text = String(q || '');
+
+    const isGreeting = ['שלום','היי','הי','hello','hi','hey','בוקר טוב','ערב טוב','לילה טוב']
+      .some(w => text.includes(w));
+    const isHowAreYou = ['מה נשמע','מה קורה','מה המצב','מה שלומך'].some(w => text.includes(w));
+    const isThanks = ['תודה','תודה רבה','אלוף','מלך','מעולה','כל הכבוד'].some(w => text.includes(w));
+    const isHelp = ['מה אתה יכול','עזור','עזרה','help'].some(w => text.includes(w));
+
+    if (isHowAreYou) {
+      return { text: 'מצוין 😊 תודה ששאלת. אפשר לשאול אותי על אירועים, חברים, נסיעות או מסמכים.', cards: [] };
+    }
+
+    if (isGreeting) {
+      return { text: 'היי 👋 נעים לראות אותך! איך אפשר לעזור לך עכשיו?', cards: [] };
+    }
+
+    if (isThanks) {
+      return { text: 'בשמחה 🙌 אם תרצה, אפשר להמשיך לחפש אירועים/אנשים/מסמכים.', cards: [] };
+    }
+
+    if (isHelp) {
+      return { text: 'בטח. אפשר לשאול למשל: "מה האירועים במרץ", "תן פרטים על אדם מסוים", "מי נוסע לתל אביב".', cards: [] };
+    }
+
+    return { text: 'אני כאן כדי לעזור 🙂', cards: [] };
   },
 
   // ── חילוץ מילות מפתח + הסרת קידומות עבריות ──────────────
@@ -776,7 +808,7 @@ const AGENT = {
     const followUpPeople = this._handleFollowUpPeopleQuery(q, isAdmin);
     if (followUpPeople) return followUpPeople;
 
-    if (this._isSmallTalk(q)) return this._smallTalkResponse();
+    if (this._isSmallTalk(q)) return this._smallTalkResponse(q);
 
     // ── שאלות כמות/ספירה (ללא כרטיסים) ────────────────────
     const countAnswer = this._countMembersAnswer(q);
