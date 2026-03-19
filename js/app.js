@@ -476,6 +476,35 @@ function showEventDetail(id) {
         <div style="font-size:.875rem;line-height:1.7">${ev.description}</div>
       </div>
     </div>
+
+    <!-- שיתוף נסיעות -->
+    <div class="ride-section">
+      <div class="ride-section-header">
+        <span>🚗 שיתוף נסיעות</span>
+        <button class="btn btn-tonal btn-sm ride-offer-btn" id="ride-offer-toggle-${ev.id}"
+          onclick="toggleRideOfferForm(${ev.id})">+ הצע נסיעה</button>
+      </div>
+
+      <!-- טופס הצעת נסיעה -->
+      <div id="ride-offer-form-${ev.id}" class="ride-offer-form" style="display:none">
+        <div class="text-field" style="margin-bottom:8px">
+          <label>מאיפה אתה מגיע?</label>
+          <input type="text" id="ride-from-${ev.id}" placeholder="למשל: תל אביב, רחוב הרצל 5…" />
+        </div>
+        <div class="text-field" style="margin-bottom:10px">
+          <label>מספר מקומות פנויים</label>
+          <input type="number" id="ride-seats-${ev.id}" min="1" max="6" value="3" style="width:80px" />
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outlined btn-sm" onclick="toggleRideOfferForm(${ev.id})" style="flex:1">ביטול</button>
+          <button class="btn btn-filled btn-sm" onclick="submitRideOffer(${ev.id})" style="flex:2">פרסם נסיעה 🚗</button>
+        </div>
+      </div>
+
+      <!-- רשימת נסיעות -->
+      <div id="ride-list-${ev.id}"></div>
+    </div>
+
     <div style="display:flex;gap:10px;margin-top:16px">
       <button class="btn btn-filled" onclick="closeModal('event-modal')" style="flex:1">סגור</button>
       <button class="btn ${APP.myCalendarEvents.has(ev.id) ? 'btn-outlined' : 'btn-tonal'}" 
@@ -486,6 +515,113 @@ function showEventDetail(id) {
     </div>
   `;
   document.getElementById('event-modal').classList.add('open');
+  renderRideList(ev.id);
+}
+
+// ── שיתוף נסיעות ──────────────────────────────────────────────
+
+function toggleRideOfferForm(eventId) {
+  const form = document.getElementById(`ride-offer-form-${eventId}`);
+  if (!form) return;
+  const isVisible = form.style.display !== 'none';
+  // בדוק שהמשתמש לא מציע כבר
+  const rides = MOCK_DATA.getRides(eventId);
+  const myRide = rides.find(r => r.userId === MOCK_DATA.currentUser?.id);
+  if (!isVisible && myRide) {
+    showToast('כבר פרסמת נסיעה לאירוע זה 🚗');
+    return;
+  }
+  form.style.display = isVisible ? 'none' : 'block';
+}
+
+function submitRideOffer(eventId) {
+  const fromEl = document.getElementById(`ride-from-${eventId}`);
+  const seatsEl = document.getElementById(`ride-seats-${eventId}`);
+  const from = fromEl?.value.trim();
+  const seats = seatsEl?.value;
+  if (!from) { showToast('⚠️ אנא הכנס מאיפה אתה מגיע.'); return; }
+  const ride = MOCK_DATA.addRide(eventId, from, seats);
+  if (!ride) { showToast('כבר פרסמת נסיעה לאירוע זה.'); return; }
+  if (fromEl) fromEl.value = '';
+  const form = document.getElementById(`ride-offer-form-${eventId}`);
+  if (form) form.style.display = 'none';
+  showToast('🚗 הנסיעה פורסמה! חברים יוכלו להצטרף.');
+  renderRideList(eventId);
+}
+
+function handleJoinRide(eventId, rideId) {
+  const ok = MOCK_DATA.joinRide(eventId, rideId);
+  if (ok) {
+    showToast('✅ הצטרפת לנסיעה!');
+  } else {
+    showToast('⚠️ לא ניתן להצטרף (מלא, הנסיעה שלך, או כבר נוסע).');
+  }
+  renderRideList(eventId);
+}
+
+function handleLeaveRide(eventId, rideId) {
+  MOCK_DATA.leaveRide(eventId, rideId);
+  showToast('יצאת מהנסיעה.');
+  renderRideList(eventId);
+}
+
+function handleCancelRide(eventId, rideId) {
+  MOCK_DATA.cancelRide(eventId, rideId);
+  showToast('הנסיעה בוטלה.');
+  renderRideList(eventId);
+}
+
+function renderRideList(eventId) {
+  const container = document.getElementById(`ride-list-${eventId}`);
+  if (!container) return;
+  const rides = MOCK_DATA.getRides(eventId);
+  const currentUser = MOCK_DATA.currentUser;
+
+  if (rides.length === 0) {
+    container.innerHTML = `<div class="ride-empty">אין נסיעות עדיין – היה הראשון להציע! 🚗</div>`;
+    return;
+  }
+
+  container.innerHTML = rides.map(ride => {
+    const isMine = ride.userId === currentUser?.id;
+    const available = ride.totalSeats - ride.passengers.length;
+    const iAmPassenger = ride.passengers.find(p => p.id === currentUser?.id);
+    const isFull = available === 0;
+
+    const passengersHtml = ride.passengers.length > 0
+      ? `<div class="ride-passengers">נוסעים: ${ride.passengers.map(p => `<span class="ride-passenger-chip">${p.avatar} ${p.name.split(' ')[0]}</span>`).join('')}</div>`
+      : '';
+
+    let actionBtn = '';
+    if (isMine) {
+      actionBtn = `<button class="btn btn-outlined btn-sm" style="color:#E53935;border-color:#E53935" onclick="handleCancelRide(${eventId},${ride.id})">בטל נסיעה</button>`;
+    } else if (iAmPassenger) {
+      actionBtn = `<button class="btn btn-outlined btn-sm" onclick="handleLeaveRide(${eventId},${ride.id})">צא מהנסיעה</button>`;
+    } else if (!isFull) {
+      actionBtn = `<button class="btn btn-tonal btn-sm" onclick="handleJoinRide(${eventId},${ride.id})">הצטרף 🚗</button>`;
+    } else {
+      actionBtn = `<span class="ride-full-badge">מלא</span>`;
+    }
+
+    return `
+      <div class="ride-card ${isMine ? 'ride-card-mine' : ''}">
+        <div class="ride-card-top">
+          <div class="ride-driver">
+            <div class="ride-avatar" style="background:${ride.color}">${ride.avatar}</div>
+            <div>
+              <div class="ride-driver-name">${ride.userName}${isMine ? ' (אני)' : ''}</div>
+              <div class="ride-from">📍 מ: ${ride.fromLocation}</div>
+            </div>
+          </div>
+          <div class="ride-seats">
+            <span class="ride-seats-num ${isFull ? 'full' : ''}">${available}</span>
+            <span class="ride-seats-label">מקומות</span>
+          </div>
+        </div>
+        ${passengersHtml}
+        <div class="ride-card-actions">${actionBtn}</div>
+      </div>`;
+  }).join('');
 }
 
 function toggleMyCalendarEvent(id) {

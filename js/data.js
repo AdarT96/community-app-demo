@@ -228,6 +228,67 @@ const MOCK_DATA = {
     },
   ],
 
+  // ── שיתוף נסיעות ──────────────────────────────────────────
+  // מבנה: { [eventId]: [{ id, userId, userName, avatar, fromLocation, totalSeats, passengers: [] }] }
+  rides: {},
+
+  addRide(eventId, fromLocation, totalSeats) {
+    const user = this.currentUser;
+    if (!user) return null;
+    if (!this.rides[eventId]) this.rides[eventId] = [];
+    // בדוק שהמשתמש לא מציע כבר נסיעה לאותו אירוע
+    const existing = this.rides[eventId].find(r => r.userId === user.id);
+    if (existing) return null;
+    const ride = {
+      id: Date.now(),
+      userId: user.id,
+      userName: user.name,
+      avatar: user.avatar,
+      color: this.groupColor(user.group),
+      group: user.group,
+      fromLocation,
+      totalSeats: parseInt(totalSeats) || 3,
+      passengers: [],
+    };
+    this.rides[eventId].push(ride);
+    return ride;
+  },
+
+  joinRide(eventId, rideId) {
+    const user = this.currentUser;
+    if (!user) return false;
+    const rides = this.rides[eventId] || [];
+    const ride = rides.find(r => r.id === rideId);
+    if (!ride) return false;
+    if (ride.userId === user.id) return false; // אי אפשר להצטרף לנסיעה שלך
+    if (ride.passengers.find(p => p.id === user.id)) return false; // כבר נוסע
+    if (ride.passengers.length >= ride.totalSeats) return false; // מלא
+    ride.passengers.push({ id: user.id, name: user.name, avatar: user.avatar });
+    return true;
+  },
+
+  leaveRide(eventId, rideId) {
+    const user = this.currentUser;
+    if (!user) return false;
+    const rides = this.rides[eventId] || [];
+    const ride = rides.find(r => r.id === rideId);
+    if (!ride) return false;
+    ride.passengers = ride.passengers.filter(p => p.id !== user.id);
+    return true;
+  },
+
+  cancelRide(eventId, rideId) {
+    const user = this.currentUser;
+    if (!user) return false;
+    if (!this.rides[eventId]) return false;
+    this.rides[eventId] = this.rides[eventId].filter(r => !(r.id === rideId && r.userId === user.id));
+    return true;
+  },
+
+  getRides(eventId) {
+    return this.rides[eventId] || [];
+  },
+
   // פונקציות עזר
   getUpcomingBirthdays(days = 30) {
     const today = new Date();
