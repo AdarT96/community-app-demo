@@ -325,6 +325,7 @@ const AGENT = {
 function openAgentChat() {
   const modal = document.getElementById('agent-modal');
   if (modal) {
+    modal.style.display = 'flex';
     modal.classList.add('open');
     // הצג שאלות ראשוניות אם הצ'אט ריק
     const messages = document.getElementById('agent-messages');
@@ -341,7 +342,10 @@ function openAgentChat() {
 
 function closeAgentChat() {
   const modal = document.getElementById('agent-modal');
-  if (modal) modal.classList.remove('open');
+  if (modal) {
+    modal.style.display = 'none';
+    modal.classList.remove('open');
+  }
 }
 
 function renderAgentWelcome() {
