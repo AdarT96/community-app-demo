@@ -122,6 +122,52 @@ const AGENT = {
       .filter(Boolean);
   },
 
+  _matchGroupFromQuery(q) {
+    const groupMap = [
+      { value: 'Operative', terms: ['אופרטיבי', 'אופרטיביים'] },
+      { value: 'Gadna', terms: ['גדנע', 'גדנ"ע', 'גדנעות', 'גדנא'] },
+      { value: 'Gibbush', terms: ['גיבוש', 'גיבושים'] },
+      { value: 'Training', terms: ['הכשרה', 'הכשרות', 'אימון', 'אימונים'] },
+      { value: 'Social', terms: ['חברתי', 'חברתיים'] },
+      { value: 'All', terms: ['הכל', 'כללי', 'כל החברים'] },
+    ];
+
+    for (const g of groupMap) {
+      if (g.terms.some(t => q.includes(t))) return g.value;
+    }
+    return null;
+  },
+
+  _countMembersAnswer(q) {
+    const isCountQuery = q.includes('כמה') || q.includes('מספר') || q.includes('כמות');
+    if (!isCountQuery || !q.includes('חבר')) return null;
+
+    const group = this._matchGroupFromQuery(q);
+    const members = MOCK_DATA.getApprovedMembers(group || 'All');
+    const groupLabel = group ? MOCK_DATA.groupLabel(group) : 'במערך';
+
+    return {
+      text: group
+        ? `יש ${members.length} חברים מאושרים בקבוצת ${groupLabel}.`
+        : `יש ${members.length} חברים מאושרים ${groupLabel}.`,
+      cards: []
+    };
+  },
+
+  _looksLikePersonQuery(q, keywords) {
+    const personIndicators = ['פרטים', 'מידע', 'מי', 'טלפון', 'וואטסאפ', 'חבר', 'איש', 'על'];
+    if (personIndicators.some(t => q.includes(t))) return true;
+
+    // חיפוש כללי: רק אם מילות החיפוש דומות לשמות אמיתיים (ומעל 2 תווים)
+    const allNameTokens = new Set(
+      MOCK_DATA.users
+        .filter(u => u.status === 'approved')
+        .flatMap(u => this._nameTokens(u.name))
+    );
+
+    return keywords.some(k => k.length >= 3 && [...allNameTokens].some(t => t.startsWith(k) || k.startsWith(t)));
+  },
+
   _isSmallTalk(q) {
     const g = ['שלום','היי','הי','מה נשמע','מה קורה','מה המצב','מה שלומך',
       'בוקר טוב','ערב טוב','לילה טוב','תודה','תודה רבה','מעולה',
@@ -197,6 +243,10 @@ const AGENT = {
 
     if (this._isSmallTalk(q)) return this._smallTalkResponse();
 
+    // ── שאלות כמות/ספירה (ללא כרטיסים) ────────────────────
+    const countAnswer = this._countMembersAnswer(q);
+    if (countAnswer) return countAnswer;
+
     // ── חודש ───────────────────────────────────────────────
     const monthMatch = this._matchMonth(q);
     if (monthMatch !== null) return this._getEventsByMonth(monthMatch, isAdmin);
@@ -238,8 +288,11 @@ const AGENT = {
     }
 
     // ── חיפוש כללי ────────────────────────────────────────
-    const personResult = this._searchPerson(q, isAdmin);
-    if (personResult) return personResult;
+    const genericKeywords = this._extractKeywords(q);
+    if (this._looksLikePersonQuery(q, genericKeywords)) {
+      const personResult = this._searchPerson(q, isAdmin);
+      if (personResult) return personResult;
+    }
     const eventResult = this._searchEvent(q, isAdmin);
     if (eventResult) return eventResult;
 
