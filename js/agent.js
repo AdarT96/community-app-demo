@@ -102,6 +102,20 @@ async function callGeminiAPI(query) {
 //  סוכן keyword (עובד ללא API)
 // ══════════════════════════════════════════════════════════════
 
+// ── היסטוריית שיחה (לצורך לוגינג בהקשר) ────────────────────
+const AGENT_HISTORY = {
+  _messages: [],
+  _maxSize: 10,
+  add(role, text) {
+    this._messages.push({ role, text, ts: new Date().toISOString() });
+    if (this._messages.length > this._maxSize) this._messages.shift();
+  },
+  getLast(n = 4) {
+    return this._messages.slice(-n);
+  },
+  clear() { this._messages = []; }
+};
+
 const AGENT = {
 
   _lastContext: null,
@@ -798,8 +812,30 @@ const AGENT = {
     };
   },
 
+  // ── זיהוי ביטויי תסכול ───────────────────────────────────
+  _isFrustration(q) {
+    const phrases = [
+      'לא הבנת', 'לא הבנת אותי', 'לא הצלחת להבין', 'זה לא מה שרציתי',
+      'זה לא מה שביקשתי', 'שאלתי משהו אחר', 'לא זה', 'לא נכון',
+      'שגיאה', 'טעות', 'ממש לא', 'בכלל לא',
+      'תנסה שוב', 'תנסה שוב בבקשה', 'נסה שוב',
+      'לא הבנת את השאלה', 'לא ענית על השאלה',
+    ];
+    return phrases.some(p => q.includes(p));
+  },
+
+  _handleFrustration(q) {
+    if (!this._isFrustration(q)) return null;
+    // לוג עם ההקשר
+    this._logUnansweredQuery(q, true);
+    return {
+      text: 'מצטער שלא הבנתי 😔 אפשר לנסח מחדש? לדוגמה:\n• **"תן פרטים על [שם]"**\n• **"מה האירועים ב[חודש]"**\n• **"כמה [מקצוע] יש במערך"**',
+      cards: []
+    };
+  },
+
   // ── לוגינג שאלות ללא תשובה ────────────────────────────────
-  _logUnansweredQuery(q) {
+  _logUnansweredQuery(q, withContext = false) {
     try {
       const user = MOCK_DATA.currentUser;
       const entry = {
@@ -807,6 +843,7 @@ const AGENT = {
         timestamp: new Date().toISOString(),
         userName: user?.name || 'אורח',
         userId: user?.id || null,
+        context: withContext ? AGENT_HISTORY.getLast(4) : AGENT_HISTORY.getLast(2),
       };
       const key = 'agent_unanswered_log';
       const existing = JSON.parse(localStorage.getItem(key) || '[]');
@@ -870,6 +907,10 @@ const AGENT = {
     // ── פקודות מנהל ─────────────────────────────────────────
     const adminCmd = this._handleAdminCommands(q, isAdmin);
     if (adminCmd) return adminCmd;
+
+    // ── ביטויי תסכול ────────────────────────────────────────
+    const frustration = this._handleFrustration(q);
+    if (frustration) return frustration;
 
     const followUpScope = this._handleCountScopeFollowUp(q);
     if (followUpScope) return followUpScope;
@@ -979,7 +1020,7 @@ const AGENT = {
     }
 
     // ── לוגינג שאלה ללא תשובה ──────────────────────────────
-    this._logUnansweredQuery(q);
+    this._logUnansweredQuery(q, false);
     return this._defaultResponse(isAdmin);
   },
 
@@ -1187,6 +1228,7 @@ function sendAgentMessage() {
   const sugg = container.querySelector('.agent-suggestions');
   if (sugg) sugg.remove();
 
+  AGENT_HISTORY.add('user', query);
   container.innerHTML += `<div class="agent-msg agent-user"><div class="agent-bubble agent-bubble-user">${escapeHtml(query)}</div></div>`;
 
   const loadId = 'agent-loading-' + Date.now();
@@ -1199,8 +1241,8 @@ function sendAgentMessage() {
     callGeminiAPI(query)
       .then(text => {
         const el = document.getElementById(loadId); if (el) el.remove();
-        if (text) renderGeminiResponse(text, container);
-        else { renderAgentResponse(AGENT.processQuery(query), container); }
+        if (text) { AGENT_HISTORY.add('agent', text); renderGeminiResponse(text, container); }
+        else { const r = AGENT.processQuery(query); AGENT_HISTORY.add('agent', r.text); renderAgentResponse(r, container); }
         container.scrollTop = container.scrollHeight;
       })
       .catch(err => {
@@ -1210,13 +1252,13 @@ function sendAgentMessage() {
         if (isQuota) {
           window.__geminiTemporarilyDisabledUntil = Date.now() + 60 * 1000;
         }
-        renderAgentResponse(AGENT.processQuery(query), container);
+        const r2 = AGENT.processQuery(query); AGENT_HISTORY.add('agent', r2.text); renderAgentResponse(r2, container);
         container.scrollTop = container.scrollHeight;
       });
   } else {
     setTimeout(() => {
       const el = document.getElementById(loadId); if (el) el.remove();
-      renderAgentResponse(AGENT.processQuery(query), container);
+      const r3 = AGENT.processQuery(query); AGENT_HISTORY.add('agent', r3.text); renderAgentResponse(r3, container);
       container.scrollTop = container.scrollHeight;
     }, 500);
   }
