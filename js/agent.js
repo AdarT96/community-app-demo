@@ -589,6 +589,51 @@ const AGENT = {
     };
   },
 
+  // ── מסמכים לקראת אירוע ספציפי ────────────────────────────
+  _searchDocsForEventAnswer(q) {
+    const eventRefWords = ['גיבוש', 'אימון', 'הכשרה', 'סדנה', 'ישיבה', 'טקס', 'כושר', 'גדנ"ע', 'גדנע'];
+    const docNeedWords = ['למלא', 'לחתום', 'נדרש', 'צריך', 'להכין', 'טפסים', 'מסמכים', 'אישור', 'טופס'];
+
+    const hasEventRef = eventRefWords.some(w => q.includes(w));
+    const hasDocNeed = docNeedWords.some(w => q.includes(w));
+    if (!hasEventRef || !hasDocNeed) return null;
+
+    // חפש את האירוע הקרוב מהסוג המוזכר
+    const today = new Date(); today.setHours(0,0,0,0);
+    const eventKeywords = this._extractKeywords(q);
+
+    // חפש מסמכים שרלוונטיים לאירוע
+    const allDocs = [];
+    MOCK_DATA.documents.forEach(cat => {
+      cat.items.forEach(item => {
+        const score = eventKeywords.filter(k =>
+          item.title.includes(k) ||
+          item.description.includes(k) ||
+          cat.category.includes(k) ||
+          (k === 'גיבוש' && (item.title.includes('גיבוש') || cat.category.includes('גיבוש') || item.description.includes('גיבוש')))
+        ).length;
+        if (score > 0) allDocs.push({ ...item, category: cat.category, score });
+      });
+    });
+
+    if (allDocs.length === 0) {
+      // החזר את כל המסמכים הכלליים כברירת מחדל
+      return {
+        text: 'לא מצאתי מסמכים ספציפיים לאירוע זה. הנה כל קטגוריות המסמכים הזמינות:',
+        cards: MOCK_DATA.documents.map(cat => ({ type: 'doc-category', category: cat.category, icon: cat.icon, count: cat.items.length }))
+      };
+    }
+
+    allDocs.sort((a, b) => b.score - a.score);
+    return {
+      text: `📋 מצאתי ${allDocs.length} מסמכים רלוונטיים:`,
+      cards: allDocs.slice(0, 6).map(i => ({
+        type: 'document', title: i.title, category: i.category,
+        description: i.description, docType: i.type, url: i.url
+      }))
+    };
+  },
+
   // ── חיפוש מסמכים/טפסים לפי נושא ────────────────────────────
   _searchDocByTopicAnswer(q) {
     const docIndicators = [
@@ -954,6 +999,10 @@ const AGENT = {
     // ── חיפוש אירועים לפי סוג (גיבוש / הכשרה / סדנה...) ──
     const eventTypeAnswer = this._searchEventsByTypeAnswer(q);
     if (eventTypeAnswer) return eventTypeAnswer;
+
+    // ── מסמכים לקראת אירוע ─────────────────────────────
+    const docsForEvent = this._searchDocsForEventAnswer(q);
+    if (docsForEvent) return docsForEvent;
 
     // ── חיפוש מסמכים לפי נושא ────────────────────────────
     const docTopicAnswer = this._searchDocByTopicAnswer(q);
