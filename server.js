@@ -99,6 +99,32 @@ app.use('/api/', rateLimit);
 app.use(express.json({ limit: BODY_LIMIT }));
 app.use(express.static(path.join(__dirname)));
 
+// ── Agent unanswered-query log ────────────────────────────────
+const AGENT_LOG_FILE = path.join(__dirname, 'agent_logs.jsonl');
+app.post('/api/agent-log', (req, res) => {
+  try {
+    const entry = { ...req.body, serverTime: new Date().toISOString(), ip: req.ip };
+    require('fs').appendFileSync(AGENT_LOG_FILE, JSON.stringify(entry) + '\n', 'utf8');
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/agent-log', (req, res) => {
+  try {
+    const fs = require('fs');
+    if (!fs.existsSync(AGENT_LOG_FILE)) return res.json([]);
+    const lines = fs.readFileSync(AGENT_LOG_FILE, 'utf8')
+      .split('\n').filter(Boolean)
+      .map(l => { try { return JSON.parse(l); } catch { return null; } })
+      .filter(Boolean);
+    res.json(lines);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/gemini', async (req, res) => {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
