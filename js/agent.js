@@ -684,27 +684,70 @@ const AGENT = {
     const rideIndicators = [
       'נסיעה', 'נסיעות', 'נוסע', 'נוסעים', 'נוסעת', 'מסיע', 'טרמפ', 'טרמפים',
       'מאיפה נוסע', 'מי נוסע', 'נסע', 'מוביל', 'נסיעה משותפת',
+      'מגיע מ', 'מגיעים מ', 'מגיעה מ', 'מגיעות מ',
+      'נוסע מ', 'נוסעים מ', 'נוסעת מ',
+      'בא מ', 'באים מ', 'באה מ',
+      'מי מגיע', 'מי בא', 'מי נוסע',
     ];
     const isRideQuery = rideIndicators.some(t => q.includes(t));
     if (!isRideQuery) return null;
+
+    const today = new Date(); today.setHours(0,0,0,0);
+
+    // ── זיהוי אירוע ספציפי (גיבוש הקרוב / הגיבוש הבא וכו') ──
+    const wantsNextEvent = q.includes('הקרוב') || q.includes('הבא') || q.includes('הקרובה') || q.includes('הבאה');
+    let targetEventId = null;
+
+    if (wantsNextEvent) {
+      // בדוק אם יש הפניה לסוג אירוע ספציפי
+      const eventTypeMap = [
+        { terms: ['גיבוש', 'גיבושים'], group: 'Gibbush', type: null },
+        { terms: ['אימון', 'הכשרה', 'תרגיל'], group: null, type: 'training' },
+        { terms: ['סדנה', 'ורקשופ'], group: null, type: 'workshop' },
+        { terms: ['ישיבה', 'פגישה'], group: null, type: 'meeting' },
+        { terms: ['גדנע', 'גדנ"ע'], group: 'Gadna', type: null },
+      ];
+
+      for (const typeEntry of eventTypeMap) {
+        if (typeEntry.terms.some(t => q.includes(t))) {
+          const nextEvent = MOCK_DATA.events
+            .filter(e => {
+              const afterToday = new Date(e.date) >= today;
+              if (typeEntry.group) return afterToday && e.group === typeEntry.group;
+              if (typeEntry.type) return afterToday && e.type === typeEntry.type;
+              return false;
+            })
+            .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+          if (nextEvent) { targetEventId = nextEvent.id; break; }
+        }
+      }
+    }
 
     const allRides = [];
     Object.entries(MOCK_DATA.rides).forEach(([eventId, rides]) => {
       const ev = MOCK_DATA.events.find(e => e.id === parseInt(eventId));
       if (!ev) return;
+      // סינון לפי אירוע ספציפי אם זוהה
+      if (targetEventId !== null && ev.id !== targetEventId) return;
       rides.forEach(ride => {
         allRides.push({ ...ride, event: ev });
       });
     });
 
     if (allRides.length === 0) {
+      if (targetEventId !== null) {
+        const targetEv = MOCK_DATA.events.find(e => e.id === targetEventId);
+        return {
+          text: `לא פורסמו נסיעות עדיין ל${targetEv ? '"' + targetEv.title + '"' : 'אירוע זה'}. ניתן להציע נסיעה בלחיצה על האירוע בלוח השנה 🚗`,
+          cards: []
+        };
+      }
       return { text: 'לא פורסמו נסיעות עדיין. ניתן להציע נסיעה בלחיצה על אירוע בלוח השנה 🚗', cards: [] };
     }
 
     const keywords = this._extractKeywords(q);
-    const locationKeywords = keywords.filter(k =>
-      !['נסיעה','נסיעות','נוסע','נוסעים','נוסעת','מסיע','טרמפ','מי','מאיפה','יש','לאירוע'].includes(k)
-    );
+    const stopRideWords = ['נסיעה','נסיעות','נוסע','נוסעים','נוסעת','מסיע','טרמפ','מי','מאיפה','יש','לאירוע','מגיע','מגיעים','מגיעה','נוסע','בא','באים','גיבוש','הקרוב','הבא'];
+    const locationKeywords = keywords.filter(k => !stopRideWords.includes(k) && k.length > 1);
 
     let filteredRides = allRides;
     if (locationKeywords.length > 0) {
