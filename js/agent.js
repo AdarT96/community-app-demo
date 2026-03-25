@@ -279,13 +279,18 @@ const AGENT = {
     if (!isCountQuery) return null;
 
     const professionMap = [
-      { singular: 'מהנדס', plural: 'מהנדסים', terms: ['מהנדס', 'מהנדסים', 'הנדסה'] },
+      { singular: 'מהנדס', plural: 'מהנדסים', terms: ['מהנדס', 'מהנדסים', 'הנדסה', 'מהנדסת'] },
       { singular: 'פסיכולוג', plural: 'פסיכולוגים', terms: ['פסיכולוג', 'פסיכולוגית', 'פסיכולוגים', 'פסיכולוגיות'] },
       { singular: 'מאמן', plural: 'מאמנים', terms: ['מאמן', 'מאמנת', 'מאמנים', 'מאמנות'] },
       { singular: 'פרמדיק', plural: 'פרמדיקים', terms: ['פרמדיק', 'פרמדיקים'] },
       { singular: 'מדריך', plural: 'מדריכים', terms: ['מדריך', 'מדריכה', 'מדריכים', 'מדריכות'] },
-      { singular: 'מנהל פרויקטים', plural: 'מנהלי פרויקטים', terms: ['מנהל פרויקטים', 'מנהלת פרויקטים', 'פרויקטים'] },
-      { singular: 'מעצב', plural: 'מעצבים', terms: ['מעצב', 'מעצבת', 'מעצבים', 'מעצבות', 'ux', 'ui'] },
+      { singular: 'מנהל פרויקטים', plural: 'מנהלי פרויקטים', terms: ['מנהל פרויקטים', 'מנהלת פרויקטים', 'pmp'] },
+      { singular: 'מעצב', plural: 'מעצבים', terms: ['מעצב', 'מעצבת', 'מעצבים', 'מעצבות', 'ux', 'ui', 'גרפי'] },
+      { singular: 'עורך דין', plural: 'עורכי דין', terms: ['עורך דין', 'עורכת דין', 'משפטן', 'משפטנית'] },
+      { singular: 'אדריכל', plural: 'אדריכלים', terms: ['אדריכל', 'אדריכלית', 'אדריכלים', 'אדריכלות'] },
+      { singular: 'רואה חשבון', plural: 'רואי חשבון', terms: ['רואה חשבון', 'רואת חשבון', 'cpa'] },
+      { singular: 'מאמן גיבוש', plural: 'מאמני גיבוש', terms: ['מאמן גיבוש', 'גיבוש ארגוני'] },
+      { singular: 'מחנך', plural: 'מחנכים', terms: ['מחנך', 'מחנכת', 'מדריך נוער', 'מדריכת נוער'] },
     ];
 
     const matched = professionMap.find(p => p.terms.some(t => q.includes(t)));
@@ -331,13 +336,18 @@ const AGENT = {
     if (!looksLikeExistenceQuestion) return null;
 
     const professionMap = [
-      { singular: 'מהנדס', plural: 'מהנדסים', terms: ['מהנדס', 'מהנדסים', 'הנדסה'] },
+      { singular: 'מהנדס', plural: 'מהנדסים', terms: ['מהנדס', 'מהנדסים', 'הנדסה', 'מהנדסת'] },
       { singular: 'פסיכולוג', plural: 'פסיכולוגים', terms: ['פסיכולוג', 'פסיכולוגית', 'פסיכולוגים', 'פסיכולוגיות'] },
       { singular: 'מאמן', plural: 'מאמנים', terms: ['מאמן', 'מאמנת', 'מאמנים', 'מאמנות'] },
       { singular: 'פרמדיק', plural: 'פרמדיקים', terms: ['פרמדיק', 'פרמדיקים'] },
       { singular: 'מדריך', plural: 'מדריכים', terms: ['מדריך', 'מדריכה', 'מדריכים', 'מדריכות'] },
-      { singular: 'מנהל פרויקטים', plural: 'מנהלי פרויקטים', terms: ['מנהל פרויקטים', 'מנהלת פרויקטים', 'פרויקטים'] },
-      { singular: 'מעצב', plural: 'מעצבים', terms: ['מעצב', 'מעצבת', 'מעצבים', 'מעצבות', 'ux', 'ui'] },
+      { singular: 'מנהל פרויקטים', plural: 'מנהלי פרויקטים', terms: ['מנהל פרויקטים', 'מנהלת פרויקטים', 'pmp'] },
+      { singular: 'מעצב', plural: 'מעצבים', terms: ['מעצב', 'מעצבת', 'מעצבים', 'מעצבות', 'ux', 'ui', 'גרפי'] },
+      { singular: 'עורך דין', plural: 'עורכי דין', terms: ['עורך דין', 'עורכת דין', 'משפטן', 'משפטנית'] },
+      { singular: 'אדריכל', plural: 'אדריכלים', terms: ['אדריכל', 'אדריכלית', 'אדריכלים', 'אדריכלות'] },
+      { singular: 'רואה חשבון', plural: 'רואי חשבון', terms: ['רואה חשבון', 'רואת חשבון', 'cpa'] },
+      { singular: 'מאמן גיבוש', plural: 'מאמני גיבוש', terms: ['מאמן גיבוש', 'גיבוש ארגוני'] },
+      { singular: 'מחנך', plural: 'מחנכים', terms: ['מחנך', 'מחנכת', 'מדריך נוער', 'מדריכת נוער'] },
     ];
 
     const matched = professionMap.find(p => p.terms.some(t => q.includes(t)));
@@ -539,7 +549,6 @@ const AGENT = {
       events = events.filter(e => new Date(e.date) >= today)
         .sort((a, b) => new Date(a.date) - new Date(b.date));
       if (events.length > 0) {
-        const nextDate = events[0].date;
         // אם שואלים "הקרוב" – החזר רק את הבא ביותר
         if (q.includes('הקרוב') || q.includes('הבא') || q.includes('הקרובה') || q.includes('הבאה')) {
           events = [events[0]];
@@ -568,7 +577,6 @@ const AGENT = {
 
   // ── חיפוש מסמכים/טפסים לפי נושא ────────────────────────────
   _searchDocByTopicAnswer(q) {
-    // זיהוי שאלות על מסמכים
     const docIndicators = [
       'טופס', 'מסמך', 'טפסים', 'מסמכים',
       'הורדה', 'אישור', 'כתב', 'נוהל', 'תקנון',
@@ -621,7 +629,6 @@ const AGENT = {
     const isRideQuery = rideIndicators.some(t => q.includes(t));
     if (!isRideQuery) return null;
 
-    // אסוף את כל הנסיעות מכל האירועים
     const allRides = [];
     Object.entries(MOCK_DATA.rides).forEach(([eventId, rides]) => {
       const ev = MOCK_DATA.events.find(e => e.id === parseInt(eventId));
@@ -635,13 +642,11 @@ const AGENT = {
       return { text: 'לא פורסמו נסיעות עדיין. ניתן להציע נסיעה בלחיצה על אירוע בלוח השנה 🚗', cards: [] };
     }
 
-    // סנן לפי מיקום אם צוין
     const keywords = this._extractKeywords(q);
     const locationKeywords = keywords.filter(k =>
       !['נסיעה','נסיעות','נוסע','נוסעים','נוסעת','מסיע','טרמפ','מי','מאיפה','יש','לאירוע'].includes(k)
     );
 
-    // סנן לפי אירוע אם צוין
     let filteredRides = allRides;
     if (locationKeywords.length > 0) {
       filteredRides = allRides.filter(r => {
@@ -683,7 +688,6 @@ const AGENT = {
     const personIndicators = ['פרטים', 'מידע', 'מי', 'טלפון', 'וואטסאפ', 'חבר', 'איש', 'על'];
     if (personIndicators.some(t => q.includes(t))) return true;
 
-    // חיפוש כללי: רק אם מילות החיפוש דומות לשמות אמיתיים (ומעל 2 תווים)
     const allNameTokens = new Set(
       MOCK_DATA.users
         .filter(u => u.status === 'approved')
@@ -697,7 +701,6 @@ const AGENT = {
     const eventIndicators = ['אירוע', 'אירועים', 'לוז', 'לו"ז', 'לוח שנה', 'מועד', 'תאריך', 'מתי', 'גיבוש', 'סדנה', 'טקס', 'ישיבה', 'אימון', 'תרגיל'];
     if (eventIndicators.some(t => q.includes(t))) return true;
 
-    // בחיפוש כללי: רק אם יש דמיון אמיתי לכותרות/סוגי אירועים
     const eventTokens = new Set(
       MOCK_DATA.events.flatMap(e => [
         ...String(e.title || '').toLowerCase().split(/[\s\-־]+/),
@@ -789,11 +792,73 @@ const AGENT = {
     );
 
     if (found.length === 0) return null;
-    // Return the next one (closest date)
     return {
       text: `📅 הנה ${found.length > 1 ? found.length + ' האירועים הקרובים' : 'האירוע הקרוב'}:`,
       cards: found.map(e => this._eventCard(e))
     };
+  },
+
+  // ── לוגינג שאלות ללא תשובה ────────────────────────────────
+  _logUnansweredQuery(q) {
+    try {
+      const user = MOCK_DATA.currentUser;
+      const entry = {
+        query: q,
+        timestamp: new Date().toISOString(),
+        userName: user?.name || 'אורח',
+        userId: user?.id || null,
+      };
+      const key = 'agent_unanswered_log';
+      const existing = JSON.parse(localStorage.getItem(key) || '[]');
+      existing.push(entry);
+      if (existing.length > 200) existing.splice(0, existing.length - 200);
+      localStorage.setItem(key, JSON.stringify(existing));
+      fetch('/api/agent-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry),
+      }).catch(() => {});
+    } catch (e) {}
+  },
+
+  // ── פקודות מנהל: צפייה בלוגים ────────────────────────────
+  _handleAdminCommands(q, isAdmin) {
+    if (!isAdmin) return null;
+    const isViewLogs = q.includes('הצג לוגים') || q.includes('לוגים') || q.includes('שאלות לא מובנות') || q.includes('agent log');
+    const isClearLogs = q.includes('נקה לוגים') || q.includes('מחק לוגים') || q.includes('clear logs');
+    const isExportLogs = q.includes('ייצא לוגים') || q.includes('export logs');
+
+    if (isClearLogs) {
+      localStorage.removeItem('agent_unanswered_log');
+      return { text: '🗑️ הלוגים נוקו בהצלחה.', cards: [] };
+    }
+    if (!isViewLogs && !isExportLogs) return null;
+
+    try {
+      const logs = JSON.parse(localStorage.getItem('agent_unanswered_log') || '[]');
+      if (logs.length === 0) {
+        return { text: '✅ אין שאלות שהסוכן לא ידע לענות עליהן עד כה.', cards: [] };
+      }
+      if (isExportLogs) {
+        const text = logs.map((l, i) =>
+          `${i+1}. [${l.timestamp.substring(0,16).replace('T',' ')}] ${l.userName}: "${l.query}"`
+        ).join('\n');
+        return { text: `📋 **${logs.length} שאלות ללא תשובה:**\n\n${text}`, cards: [] };
+      }
+      const recent = logs.slice(-10).reverse();
+      const cards = recent.map(l => ({
+        type: 'log-entry',
+        query: l.query,
+        userName: l.userName,
+        timestamp: l.timestamp,
+      }));
+      return {
+        text: `📊 **${logs.length} שאלות ללא תשובה** (10 אחרונות)\nלייצוא מלא: **ייצא לוגים** | לניקוי: **נקה לוגים**`,
+        cards,
+      };
+    } catch (e) {
+      return { text: 'שגיאה בקריאת הלוגים.', cards: [] };
+    }
   },
 
   processQuery(query) {
@@ -801,6 +866,10 @@ const AGENT = {
 
     const q = query.trim().toLowerCase();
     const isAdmin = user.role === 'admin';
+
+    // ── פקודות מנהל ─────────────────────────────────────────
+    const adminCmd = this._handleAdminCommands(q, isAdmin);
+    if (adminCmd) return adminCmd;
 
     const followUpScope = this._handleCountScopeFollowUp(q);
     if (followUpScope) return followUpScope;
@@ -909,6 +978,8 @@ const AGENT = {
       if (eventResult) return eventResult;
     }
 
+    // ── לוגינג שאלה ללא תשובה ──────────────────────────────
+    this._logUnansweredQuery(q);
     return this._defaultResponse(isAdmin);
   },
 
@@ -957,19 +1028,16 @@ const AGENT = {
     const keywords = this._extractKeywords(q);
     if (keywords.length === 0) return null;
 
-    // עדיפות 1: חיפוש לפי שם (ולהימנע מהתאמות רחבות מה-bio/skills)
     const nameKeywords = keywords.filter(k =>
       approved.some(u => u.name.toLowerCase().includes(k))
     );
 
     if (nameKeywords.length > 0) {
-      // התאמה חזקה: כל מילה חייבת להיות טוקן בשם ("דוד" לא יפול על "DevOps")
       const strongNameMatches = approved.filter(u => {
         const tokens = this._nameTokens(u.name);
         return nameKeywords.every(k => tokens.some(t => t === k || t.startsWith(k)));
       });
 
-      // העדפה לשם שמתחיל במילת החיפוש (למשל "דוד" -> "דוד לוי" לפני "בן-דוד")
       const startsWithNameMatches = strongNameMatches.filter(u =>
         nameKeywords.every(k => u.name.toLowerCase().startsWith(k))
       );
@@ -1283,6 +1351,19 @@ function renderAgentCard(card) {
         <span class="agent-card-action">›</span>
       </div>`;
   }
+
+  if (card.type === 'log-entry') {
+    const dt = card.timestamp ? card.timestamp.replace('T',' ').substring(0,16) : '';
+    return `
+      <div class="agent-card agent-card-doc" style="cursor:default">
+        <div style="font-size:1.1rem">❓</div>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:.83rem;color:var(--md-on-surface)">${escapeHtml(card.query)}</div>
+          <div style="font-size:.7rem;color:var(--md-on-surface-variant);margin-top:2px">${escapeHtml(card.userName)} · ${dt}</div>
+        </div>
+      </div>`;
+  }
+
   return '';
 }
 
